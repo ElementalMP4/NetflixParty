@@ -59,7 +59,6 @@ function embeddedCode() {
             console.log("Waiting before next listener attempt");
             setTimeout(addListeners, 500);
         }
-        connectToParty();
     }
 
     function initialiseParty() {
@@ -71,34 +70,27 @@ function embeddedCode() {
     }
 
     function injectPage() {
-        //Inject the page here
+        document.append(`<div style="float:left; width: 20%; height: 100%></div>`)
     }
 
-    Gateway.onopen = () => {
+    Gateway.onopen = function() {
         console.log("Gateway Connected");
+        window.Gateway = Gateway;
+        connectToParty();
     };
-    Gateway.onclose = function() { console.log("Gateway Disconnected") };
+
+    Gateway.onclose = function() {
+        console.log("Gateway Disconnected")
+    };
+
     Gateway.onmessage = function(msg) {
         const message = JSON.parse(msg.data);
         console.log(message);
         switch (message.origin) {
             case "join-party":
-                if (message.success) Gateway.close();
+                if (!message.success) Gateway.close();
                 else injectPage();
                 break;
-            case "system-message":
-                switch (message.data.type) {
-                    case "play-video":
-                        if (!PLAYER.isPlaying()) {
-                            playAtTime(message.data.data.time);
-                        }
-                        break;
-                    case "pause-video":
-                        if (PLAYER.isPlaying()) {
-                            PLAYER.pause();
-                        }
-                        break;
-                }
             case "chat-message":
                 break;
         }

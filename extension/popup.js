@@ -7,7 +7,6 @@ function showMessage(message) {
 const GatewayServerURL = "wss://netflixparty.voidtech.de/gateway"
 var Gateway = new WebSocket(GatewayServerURL);
 
-
 Gateway.onopen = function() {
     console.log("Connected To Gateway");
 }
@@ -28,7 +27,7 @@ function reloadWithRoomID(roomID) {
 Gateway.onmessage = function(message) {
     const response = JSON.parse(message.data);
     console.log(response);
-    if (response.success) reloadWithRoomID(response.response);
+    if (response.success) reloadWithRoomID(response.response.roomID);
     else showMessage("Error: " + response.response);
 }
 
