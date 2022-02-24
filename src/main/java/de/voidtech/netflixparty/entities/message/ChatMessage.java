@@ -88,7 +88,7 @@ public class ChatMessage {
 	}
 
 	public String convertToJson() {
-		JSONObject data = new JSONObject().put("type", "party-chatmessage")
+		JSONObject data = new JSONObject().put("type", "chat-message")
 				.put("data", new JSONObject()
 						.put("author", this.author)
 						.put("colour", this.colour)

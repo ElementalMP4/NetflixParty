@@ -26,7 +26,7 @@ public class VideoPauseHandler extends AbstractHandler {
 		if (partyService.getParty(roomID) == null) responder.sendError(session, "Party does not exist", this.getHandlerType());
 		else {
 			Party party = partyService.getParty(roomID);
-			responder.sendSystemMessage(party, new MessageBuilder().type("pausevideo").data(MessageBuilder.EMPTY_JSON).buildToSystemMessage());
+			responder.sendSystemMessage(party, new MessageBuilder().type(this.getHandlerType()).data(MessageBuilder.EMPTY_JSON).buildToSystemMessage());
 		}
 	}
 

@@ -27,7 +27,7 @@ public class VideoPlayHandler extends AbstractHandler {
 		if (partyService.getParty(roomID) == null) responder.sendError(session, "Party does not exist", this.getHandlerType());
 		else {
 			Party party = partyService.getParty(roomID);
-			responder.sendSystemMessage(party, new MessageBuilder().type("playvideo").data(new JSONObject()
+			responder.sendSystemMessage(party, new MessageBuilder().type(this.getHandlerType()).data(new JSONObject()
 					.put("time", timestamp)).buildToSystemMessage());
 		}
 		
