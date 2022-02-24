@@ -1,11 +1,12 @@
 function embeddedCode() {
     var Gateway = new WebSocket("wss://netflixparty.voidtech.de/gateway");
-    var VIDEO_PLAYER, SESSION_ID, PLAYER;
-
     var Globals = {
         LAST_MESSAGE_AUTHOR: "",
         ROOM_COLOUR: "",
-        ROOM_ID: ""
+        ROOM_ID: "",
+        PLAYER: {},
+        VIDEO_PLAYER: {},
+        SESSION_ID: ""
     };
 
     const STYLESHEET_RULES = `
@@ -24,7 +25,7 @@ function embeddedCode() {
         border-bottom: 2px solid #8f2727
     }
     .chat {
-        height: 93%;
+        height: 90%;
         overflow-y: scroll;
         overflow-x: hidden;
         overflow: auto;
@@ -167,25 +168,27 @@ function embeddedCode() {
     }
 
     function pause() {
-        PLAYER.pause();
+        Globals.PLAYER.pause();
     }
 
     function play() {
-        PLAYER.play();
+        Globals.PLAYER.play();
     }
 
     function playAtTime(time) {
-        PLAYER.seek(time);
-        if (!PLAYER.isPlaying()) play();
+        Globals.PLAYER.seek(time);
+        if (!Globals.PLAYER.isPlaying()) play();
     }
 
     function handlePlayEvent() {
-        console.log("Playing at " + PLAYER.getCurrentTime());
-        sendGatewayMessage({ "type": "play-video", "data": { "timestamp": PLAYER.getCurrentTime(), "roomID": Globals.ROOM_ID } });
+        console.log("Playing at " + Globals.PLAYER.getCurrentTime());
+        displayLocalMessage("Video Playing at " + Globals.PLAYER.getCurrentTime());
+        sendGatewayMessage({ "type": "play-video", "data": { "timestamp": Globals.PLAYER.getCurrentTime(), "roomID": Globals.ROOM_ID } });
     }
 
     function handlePauseEvent() {
         console.log("Paused");
+        displayLocalMessage("Video Paused");
         sendGatewayMessage({ "type": "pause-video", "data": { "roomID": Globals.ROOM_ID } });
     }
 
@@ -193,23 +196,51 @@ function embeddedCode() {
         sendGatewayMessage({ "type": "join-party", "data": { "roomID": Globals.ROOM_ID, "username": getStoredValue("username") } });
     }
 
+    function actuallyAddListeners() {
+        try {
+            document.getElementsByTagName("video")[0].onerror = null;
+        } catch (error) {
+            console.error(error);
+            console.log("Could not change error listener. This is fine.");
+        }
+
+        try {
+            document.getElementsByTagName("video")[0].onpause = function() { handlePauseEvent() };
+        } catch (error) {
+            console.error(error);
+            console.log("Could not change pause listener. This is not fine.");
+        }
+
+        try {
+            document.getElementsByTagName("video")[0].onplay = function() { handlePlayEvent() };
+        } catch (error) {
+            console.error(error);
+            console.log("Could not change play listener. This is not fine.");
+        }
+    }
+
     function addListeners() {
         console.log("Attempting to add listeners...");
-        if (PLAYER.isReady()) {
-            console.log("Adding listeners!")
-            document.getElementsByTagName("video")[0].onplay = function() { handlePlayEvent() };
-            document.getElementsByTagName("video")[0].onpause = function() { handlePauseEvent() };
+        Globals.VIDEO_PLAYER = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
+        Globals.SESSION_ID = Globals.VIDEO_PLAYER.getAllPlayerSessionIds();
+        Globals.PLAYER = Globals.VIDEO_PLAYER.getVideoPlayerBySessionId(Globals.SESSION_ID);
+        if (Globals.PLAYER != undefined && document.getElementsByTagName("video")[0] != undefined) {
+            if (Globals.PLAYER.isReady()) {
+                console.log("Adding listeners!");
+                setTimeout(actuallyAddListeners, 100);
+            } else {
+                console.log("Player not ready! Waiting before next listener attempt");
+                setTimeout(addListeners, 1000);
+            }
         } else {
-            console.log("Waiting before next listener attempt");
-            setTimeout(addListeners, 500);
+            console.log("Player undefined! Waiting before next listener attempt");
+            setTimeout(addListeners, 1000);
         }
     }
 
     function initialiseParty() {
-        VIDEO_PLAYER = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
-        SESSION_ID = VIDEO_PLAYER.getAllPlayerSessionIds();
-        PLAYER = VIDEO_PLAYER.getVideoPlayerBySessionId(SESSION_ID);
         console.log("NETFLIX PARTY EMBEDDED");
+        window.NetflixParty = Globals;
         addListeners();
         injectPage();
     }
@@ -242,26 +273,37 @@ function embeddedCode() {
     }
 
     function injectPage() {
+        //Add stylesheet
         let stylesheet = document.createElement("style");
         stylesheet.innerText = STYLESHEET_RULES;
         document.head.appendChild(stylesheet);
+        //Add fonts
+        document.head.insertAdjacentHTML("beforeend", `
+            <link href="https://fonts.googleapis.com/css2?family=Lobster+Two&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Paytone+One&display=swap" rel="stylesheet">
+        `);
+        //Re-format the netflix player
         let videoDiv = document.querySelector("#appMountPoint > div > div > div.watch-video > div");
         videoDiv.style.display = "inline-block";
         videoDiv.style.width = "80%"
         videoDiv.style.float = "left";
+        //Add our chat
         videoDiv.insertAdjacentHTML("afterend", `<div id="chat"></div>`);
         let chat = document.getElementById("chat");
         chat.style.height = "100%"
         chat.style.width = "20%";
         chat.style.float = "right";
+        //Add the chat history
         let chatHistory = document.createElement("div");
         chatHistory.classList.add("chat");
         chatHistory.id = "chat-history";
         chat.appendChild(chatHistory);
+        //Add the chat controls
         chat.insertAdjacentHTML("beforeend", `
-        <input type="text" id="chat-input" placeholder="Enter a message">
-        <p class="typing-message typing" id="typing-message"><span>•</span><span>•</span><span>•</span> People are typing</p>
+            <br><input type="text" id="chat-input" placeholder="Enter a message">
+            <p class="typing-message typing" id="typing-message"><span>•</span><span>•</span><span>•</span> People are typing</p>
         `);
+        //Remove this later
         displayLocalMessage("Ready!");
     }
 
@@ -296,4 +338,4 @@ function embedInPage(fn) {
 }
 
 let url = new URL(location.href);
-if (url.searchParams.has("roomID")) setTimeout(() => { embedInPage(embeddedCode) }, 5000);
+if (url.searchParams.has("roomID")) embedInPage(embeddedCode);
