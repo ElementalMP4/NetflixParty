@@ -1,13 +1,15 @@
 function embeddedCode() {
-    var Gateway = new WebSocket("wss://netflixparty.voidtech.de/gateway");
     var Globals = {
         LAST_MESSAGE_AUTHOR: "",
         ROOM_COLOUR: "",
         ROOM_ID: "",
         PLAYER: {},
         VIDEO_PLAYER: {},
-        SESSION_ID: ""
+        SESSION_ID: "",
+        GATEWAY: {}
     };
+
+    Globals.GATEWAY = new WebSocket("wss://netflixparty.voidtech.de/gateway");
 
     const STYLESHEET_RULES = `
     input[type=text] {
@@ -150,7 +152,7 @@ function embeddedCode() {
     console.log("Netflix Party - Better than Teleparty");
 
     function sendGatewayMessage(message) {
-        if (Gateway.readyState == Gateway.OPEN) Gateway.send(JSON.stringify(message));
+        if (Globals.GATEWAY.readyState == Globals.GATEWAY.OPEN) Globals.GATEWAY.send(JSON.stringify(message));
     }
 
     function getDefault(value) {
@@ -198,13 +200,6 @@ function embeddedCode() {
 
     function actuallyAddListeners() {
         try {
-            document.getElementsByTagName("video")[0].onerror = null;
-        } catch (error) {
-            console.error(error);
-            console.log("Could not change error listener. This is fine.");
-        }
-
-        try {
             document.getElementsByTagName("video")[0].onpause = function() { handlePauseEvent() };
         } catch (error) {
             console.error(error);
@@ -217,6 +212,8 @@ function embeddedCode() {
             console.error(error);
             console.log("Could not change play listener. This is not fine.");
         }
+
+        injectPage();
     }
 
     function addListeners() {
@@ -227,7 +224,7 @@ function embeddedCode() {
         if (Globals.PLAYER != undefined && document.getElementsByTagName("video")[0] != undefined) {
             if (Globals.PLAYER.isReady()) {
                 console.log("Adding listeners!");
-                setTimeout(actuallyAddListeners, 100);
+                actuallyAddListeners();
             } else {
                 console.log("Player not ready! Waiting before next listener attempt");
                 setTimeout(addListeners, 1000);
@@ -242,7 +239,6 @@ function embeddedCode() {
         console.log("NETFLIX PARTY EMBEDDED");
         window.NetflixParty = Globals;
         addListeners();
-        injectPage();
     }
 
     function addChatMessage(data) {
@@ -267,6 +263,13 @@ function embeddedCode() {
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
+    function showTypingMessage() {
+        document.getElementById("typing-message").style.display = "block";
+    }
+
+    function hideTypingMessage() {
+        document.getElementById("typing-message").style.display = "none";
+    }
 
     function displayLocalMessage(message) {
         addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "/favicon.png" });
@@ -303,25 +306,40 @@ function embeddedCode() {
             <br><input type="text" id="chat-input" placeholder="Enter a message">
             <p class="typing-message typing" id="typing-message"><span>•</span><span>•</span><span>•</span> People are typing</p>
         `);
-        //Remove this later
-        displayLocalMessage("Ready!");
+        //Make the typing thingy go away
+        hideTypingMessage();
     }
 
-    Gateway.onopen = function() {
+    function speakMessage(message) {
+        let tts = new SpeechSynthesisUtterance();
+        tts.text = message;
+        window.speechSynthesis.speak(tts);
+    }
+
+    function handleChatMessage(data) {
+        if (data.modifiers.includes("tts")) speakMessage(data.content);
+        addChatMessage(data);
+    }
+
+    Globals.GATEWAY.onopen = function() {
         console.log("Gateway Connected");
-        window.Gateway = Gateway;
         connectToParty();
     };
 
-    Gateway.onclose = function() {
+    Globals.GATEWAY.onclose = function() {
         console.log("Gateway Disconnected")
     };
 
-    Gateway.onmessage = function(msg) {
+    Globals.GATEWAY.onmessage = function(msg) {
         const message = JSON.parse(msg.data);
         console.log(message);
         switch (message.origin) {
-
+            case "join-party":
+                Globals.ROOM_COLOUR = message.response.theme;
+                break;
+            case "chat-message":
+                handleChatMessage(message.data);
+                break;
         }
     }
 
