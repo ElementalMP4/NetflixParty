@@ -9,6 +9,7 @@ public class MessageBuilder {
 	private String author;
 	private String colour;
 	private String content;
+	private String avatar;
 	private String messageModifiers;
 	
 	//System Message Fields
@@ -18,6 +19,7 @@ public class MessageBuilder {
 	//Chat Message Constants
 	public static final String SYSTEM_AUTHOR = "System";
 	public static final String SYSTEM_MODIFIERS = "system";
+	public static final String SYSTEM_AVATAR = "https://netflixparty.voidtech.de/avatar/system";
 	
 	public static final JSONObject EMPTY_JSON = new JSONObject();
 	
@@ -37,6 +39,10 @@ public class MessageBuilder {
 		return this.content;
 	}
 	
+	public String getChatMessageAvatar() {
+		return this.avatar;
+	}
+	
 	public String getChatMessageMessageModifiers() {
 		return this.messageModifiers;
 	}
@@ -48,6 +54,11 @@ public class MessageBuilder {
 	
 	public MessageBuilder author(String author) {
 		this.author = author;
+		return this;
+	}
+	
+	public MessageBuilder avatar(String avatar) {
+		this.avatar = avatar;
 		return this;
 	}
 	

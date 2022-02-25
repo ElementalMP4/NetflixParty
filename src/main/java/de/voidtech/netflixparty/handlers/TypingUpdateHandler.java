@@ -6,55 +6,42 @@ import org.springframework.web.socket.WebSocketSession;
 
 import main.java.de.voidtech.netflixparty.annotations.Handler;
 import main.java.de.voidtech.netflixparty.entities.Party;
-import main.java.de.voidtech.netflixparty.entities.message.ChatMessage;
 import main.java.de.voidtech.netflixparty.entities.message.MessageBuilder;
 import main.java.de.voidtech.netflixparty.service.GatewayResponseService;
 import main.java.de.voidtech.netflixparty.service.PartyService;
 
 @Handler
-public class ChatMessageHandler extends AbstractHandler {
+public class TypingUpdateHandler extends AbstractHandler {
+	
+	@Autowired
+	private GatewayResponseService responder;
 	
 	@Autowired
 	private PartyService partyService;
 	
-	@Autowired
-	private GatewayResponseService responder;
-
 	@Override
 	public void execute(WebSocketSession session, JSONObject data) {
 		String roomID = data.getString("roomID");
-		String content = data.getString("content").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-		String colour = data.getString("colour");
-		String modifiers = data.getString("modifiers");
-		String author = data.getString("author");
-		String avatar = data.getString("avatar");
-
+		String mode = data.getString("mode");
+		String user = data.getString("user");
+				
 		if (partyService.getParty(roomID) == null) responder.sendError(session, "Party does not exist", this.getHandlerType());
 		else {
 			Party party = partyService.getParty(roomID);
-			if (content.length() > 2000) responder.sendError(session, "Your message is too long! Messages cannot be longer than 2000 characters.", this.getHandlerType());
-			else {
-				ChatMessage userMessage = new MessageBuilder()
-						.partyID(roomID)
-						.content(content)
-						.colour(colour)
-						.modifiers(modifiers)
-						.author(author)
-						.avatar(avatar)
-						.buildToChatMessage();
-				responder.sendChatMessage(party, userMessage);	
-			}
-		}		
+			if (!mode.equals("start") && !mode.equals("stop"))
+				responder.sendError(session, "An invalid typing mode was provided", this.getHandlerType());
+			else responder.sendSystemMessage(party, new MessageBuilder().type(this.getHandlerType()).data(new JSONObject()
+					.put("mode", mode).put("user", user)).buildToSystemMessage());
+		}	
 	}
 
 	@Override
 	public String getHandlerType() {
-		return "chat-message";
-	}
-
+		return "typing-update";
+	}	
+	
 	@Override
 	public boolean requiresRateLimit() {
 		return false;
 	}
-
 }

@@ -6,8 +6,12 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
+import main.java.de.voidtech.netflixparty.service.FileReader;
 
 @RestController
 public class HttpRestController {
@@ -15,12 +19,20 @@ public class HttpRestController {
 	@Autowired
 	private ApplicationContext context;
 	
-	@RequestMapping(value = "/")
+	@Autowired
+	private FileReader fileReader;
+	
+	@RequestMapping(value = "/", produces = "text/html", method = RequestMethod.GET)
 	public String indexRoute() {
-		return "NetflixParty";
+		return fileReader.getTextFileContents("html/index.html");
 	}
 	
-	@RequestMapping(value = "/beansandthreads")
+	@RequestMapping(value = "/avatar/{image}", produces = "image/png", method = RequestMethod.GET)
+	public byte[] avatarRoute(@PathVariable String image) {
+		return fileReader.getBinaryFileContents("/img/avatars/" + image + ".png");
+	}
+	
+	@RequestMapping(value = "/beansandthreads", produces = "text/html", method = RequestMethod.GET)
 	public String statsRoute() {
 		Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
 		List<String> threadList = new ArrayList<String>();

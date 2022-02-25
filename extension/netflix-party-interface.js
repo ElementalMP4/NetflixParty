@@ -6,7 +6,8 @@ function embeddedCode() {
         PLAYER: {},
         VIDEO_PLAYER: {},
         SESSION_ID: "",
-        GATEWAY: {}
+        GATEWAY: {},
+        CHAT_READY: false
     };
 
     Globals.GATEWAY = new WebSocket("wss://netflixparty.voidtech.de/gateway");
@@ -27,7 +28,7 @@ function embeddedCode() {
         border-bottom: 2px solid #8f2727
     }
     .chat {
-        height: 90%;
+        height: 91%;
         overflow-y: scroll;
         overflow-x: hidden;
         overflow: auto;
@@ -152,6 +153,7 @@ function embeddedCode() {
     console.log("Netflix Party - Better than Teleparty");
 
     function sendGatewayMessage(message) {
+        console.log("Sent", message);
         if (Globals.GATEWAY.readyState == Globals.GATEWAY.OPEN) Globals.GATEWAY.send(JSON.stringify(message));
     }
 
@@ -161,6 +163,8 @@ function embeddedCode() {
                 return "Netflix Party User";
             case "colour":
                 return "#FF0000";
+            case "avatar":
+                return "beagle";
         }
     }
 
@@ -242,6 +246,7 @@ function embeddedCode() {
     }
 
     function addChatMessage(data) {
+        if (!Globals.CHAT_READY) return;
         const author = data.author;
         const colour = data.colour;
         const content = data.content;
@@ -250,7 +255,7 @@ function embeddedCode() {
 
         let newMessage = `<div class="chat-message">`;
         if (Globals.LAST_MESSAGE_AUTHOR !== author) {
-            newMessage += `<img class="user-image" src="${modifiers.includes("system") ? avatar : ("/avatar/" + avatar)}">`;
+            newMessage += `<img class="user-image" src="${modifiers.includes("system") ? avatar : ("https://netflixparty.voidtech.de/avatar/" + avatar)}">`;
             newMessage += `<p class="msg-nickname" style="color:${colour}">${author}</p><br>`;
         }
         newMessage += `<p ${modifiers}>${content}</p></div>`;
@@ -272,7 +277,7 @@ function embeddedCode() {
     }
 
     function displayLocalMessage(message) {
-        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "/favicon.png" });
+        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "https://netflixparty.voidtech.de/avatar/system" });
     }
 
     function injectPage() {
@@ -308,6 +313,9 @@ function embeddedCode() {
         `);
         //Make the typing thingy go away
         hideTypingMessage();
+        Globals.CHAT_READY = true;
+        //Chat Listener
+        document.getElementById("chat-input").addEventListener("keyup", handleChatEvent);
     }
 
     function speakMessage(message) {
@@ -332,14 +340,153 @@ function embeddedCode() {
 
     Globals.GATEWAY.onmessage = function(msg) {
         const message = JSON.parse(msg.data);
-        console.log(message);
-        switch (message.origin) {
+        console.log("Received", message);
+        switch (message.type) {
             case "join-party":
-                Globals.ROOM_COLOUR = message.response.theme;
+                if (message.success) Globals.ROOM_COLOUR = message.response.theme;
                 break;
             case "chat-message":
                 handleChatMessage(message.data);
                 break;
+        }
+    }
+
+    function handleHelpCommand() {
+        displayLocalMessage(`Chat Command Help:<br>
+    /help - shows this message<br><br>
+    /i [message] - changes your message to italics<br><br>
+    /u [message] - changes your message to underline<br><br>
+    /b [message] - makes your message bold<br><br>
+    /s [message] - changes your message to strikethrough<br><br>
+    /c [message] - changes your message to cursive<br><br>
+    /cc [message] - cHaNgEs YoUr TeXt LiKe ThIs<br><br>
+    /big [message] - makes your message big<br><br>
+    /r - reloads your session<br><br>
+    /tts - send a text-to-speech message<br><br>
+    /ping - get the API response time`);
+    }
+
+    function toCrazyCase(body) {
+        let toUpper = Math.round(Math.random()) == 1 ? true : false;
+        let messageLetters = body.split("");
+        let final = "";
+
+        for (let i = 0; i < messageLetters.length; i++) {
+            if (messageLetters[i].replace(/[A-Za-z]+/g, " ") !== "") {
+                if (toUpper) final += messageLetters[i].toLowerCase();
+                else final += messageLetters[i].toUpperCase();
+                toUpper = !toUpper;
+            } else final += messageLetters[i];
+        }
+        return final;
+    }
+
+    function handlePingCommand() {
+        let requestData = {
+            "type": "system-ping",
+            "data": {
+                "start": new Date().getTime()
+            }
+        }
+        sendGatewayMessage(requestData);
+    }
+
+    function sendTypingStop() {
+        if (Globals.TYPING) {
+            Globals.TYPING = false;
+            sendGatewayMessage({ "type": "typing-update", "data": { "mode": "stop", "user": getStoredValue("username"), "roomID": Globals.ROOM_ID } });
+        }
+    }
+
+    function sendTypingStart() {
+        if (!Globals.TYPING) {
+            Globals.TYPING = true;
+            sendGatewayMessage({ "type": "typing-update", "data": { "mode": "start", "user": getStoredValue("username"), "roomID": Globals.ROOM_ID } });
+        }
+    }
+
+    function handleChatEvent(event) {
+        if (event.key == "Enter") {
+            sendTypingStop();
+            event.preventDefault();
+            let message = document.getElementById("chat-input").value.trim();
+            if (message == "") return;
+            if (message.length > 2000) {
+                displayLocalMessage("Your message is too long! Messages cannot be longer than 2000 characters.");
+                return;
+            }
+
+            let sendChatMessage = true;
+            let modifiers = "";
+
+            if (message.startsWith("/")) {
+                const args = message.slice(1).split(/ +/);
+                const command = args.shift().toLowerCase();
+
+                switch (command) {
+                    case "help":
+                        handleHelpCommand();
+                        sendChatMessage = false;
+                        break;
+                    case "cc":
+                        message = toCrazyCase(args.join(" "));
+                        break;
+                    case "i":
+                        modifiers = "italic";
+                        message = args.join(" ");
+                        break;
+                    case "u":
+                        modifiers = "underline";
+                        message = args.join(" ");
+                        break;
+                    case "b":
+                        modifiers = "bold";
+                        message = args.join(" ");
+                        break;
+                    case "s":
+                        modifiers = "strikethrough";
+                        message = args.join(" ");
+                        break;
+                    case "c":
+                        modifiers = "cursive";
+                        message = args.join(" ");
+                        break;
+                    case "big":
+                        modifiers = "big";
+                        message = args.join(" ");
+                        break;
+                    case "r":
+                        sendChatMessage = false;
+                        location.reload();
+                        break;
+                    case "tts":
+                        modifiers = "tts";
+                        message = args.join(" ");
+                        break;
+                    case "ping":
+                        handlePingCommand();
+                        sendChatMessage = false;
+                        break;
+                }
+            }
+            if (sendChatMessage) {
+                sendGatewayMessage({
+                    "type": "chat-message",
+                    "data": {
+                        "roomID": Globals.ROOM_ID,
+                        "content": message,
+                        "colour": getStoredValue("colour"),
+                        "author": getStoredValue("username"),
+                        "avatar": getStoredValue("avatar"),
+                        "modifiers": modifiers
+                    }
+                });
+            }
+            document.getElementById("chat-input").value = "";
+        } else {
+            let message = document.getElementById("chat-input").value.trim();
+            if (message == "") sendTypingStop();
+            else sendTypingStart();
         }
     }
 

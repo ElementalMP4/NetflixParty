@@ -19,7 +19,8 @@ function reloadWithRoomID(roomID) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
         var tab = tabs[0];
         let url = new URL(tab.url);
-        url.searchParams.append("roomID", roomID);
+        if (url.searchParams.has("roomID")) url.searchParams.set("roomID", roomID);
+        else url.searchParams.append("roomID", roomID);
         chrome.tabs.create({ url: url.toString() });
     });
 }

@@ -59,6 +59,7 @@ public class Party {
 					.modifiers(MessageBuilder.SYSTEM_MODIFIERS)
 					.colour(this.getRoomColour())
 					.content("Someone has left the party!")
+					.avatar(MessageBuilder.SYSTEM_AVATAR)
 					.partyID(this.getPartyID())
 					.buildToChatMessage();
 			broadcastMessage(leftMessage);
