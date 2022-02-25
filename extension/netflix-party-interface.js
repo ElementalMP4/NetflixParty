@@ -316,6 +316,7 @@ function embeddedCode() {
         Globals.CHAT_READY = true;
         //Chat Listener
         document.getElementById("chat-input").addEventListener("keyup", handleChatEvent);
+        connectToParty();
     }
 
     function speakMessage(message) {
@@ -331,7 +332,6 @@ function embeddedCode() {
 
     Globals.GATEWAY.onopen = function() {
         console.log("Gateway Connected");
-        connectToParty();
     };
 
     Globals.GATEWAY.onclose = function() {
