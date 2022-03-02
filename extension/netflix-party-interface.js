@@ -3,14 +3,20 @@ function embeddedCode() {
         LAST_MESSAGE_AUTHOR: "",
         ROOM_COLOUR: "",
         ROOM_ID: "",
-        PLAYER: {},
-        VIDEO_PLAYER: {},
         SESSION_ID: "",
         GATEWAY: {},
-        CHAT_READY: false
+        GET_PLAYER: {},
+        CHAT_READY: false,
+        IS_PLAYING: false
     };
 
     Globals.GATEWAY = new WebSocket("wss://netflixparty.voidtech.de/gateway");
+
+    var getVideoPlayer = function() {
+        var e = window.netflix.appContext.state.playerApp.getAPI().videoPlayer,
+            t = e.getAllPlayerSessionIds().find((val => val.includes("watch")));
+        return e.getVideoPlayerBySessionId(t);
+    };
 
     const STYLESHEET_RULES = `
     input[type=text] {
@@ -174,22 +180,28 @@ function embeddedCode() {
     }
 
     function pause() {
-        Globals.PLAYER.pause();
-    }
-
-    function play() {
-        Globals.PLAYER.play();
+        if (getVideoPlayer().isPaused()) console.log("Ignoring pause event");
+        else {
+            Globals.IS_PLAYING = false;
+            console.log("Automated pause event fired");
+            getVideoPlayer().pause();
+        }
     }
 
     function playAtTime(time) {
-        Globals.PLAYER.seek(time);
-        if (!Globals.PLAYER.isPlaying()) play();
+        if (getVideoPlayer().isPlaying()) console.log("Ignoring play event");
+        else {
+            Globals.IS_PLAYING = true;
+            console.log("Automated play event fired");
+            getVideoPlayer().seek(time);
+            getVideoPlayer().play();
+        }
     }
 
     function handlePlayEvent() {
-        console.log("Playing at " + Globals.PLAYER.getCurrentTime());
-        displayLocalMessage("Video Playing at " + Globals.PLAYER.getCurrentTime());
-        sendGatewayMessage({ "type": "play-video", "data": { "timestamp": Globals.PLAYER.getCurrentTime(), "roomID": Globals.ROOM_ID } });
+        console.log("Playing at " + getVideoPlayer().getCurrentTime());
+        displayLocalMessage("Video Playing at " + getVideoPlayer().getCurrentTime());
+        sendGatewayMessage({ "type": "play-video", "data": { "timestamp": getVideoPlayer().getCurrentTime(), "roomID": Globals.ROOM_ID } });
     }
 
     function handlePauseEvent() {
@@ -222,13 +234,12 @@ function embeddedCode() {
 
     function addListeners() {
         console.log("Attempting to add listeners...");
-        Globals.VIDEO_PLAYER = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
-        Globals.SESSION_ID = Globals.VIDEO_PLAYER.getAllPlayerSessionIds();
-        Globals.PLAYER = Globals.VIDEO_PLAYER.getVideoPlayerBySessionId(Globals.SESSION_ID);
-        if (Globals.PLAYER != undefined && document.getElementsByTagName("video")[0] != undefined) {
-            if (Globals.PLAYER.isReady()) {
+        let player = getVideoPlayer();
+        if (player != undefined && document.getElementsByTagName("video")[0] != undefined) {
+            if (player.isReady()) {
                 console.log("Adding listeners!");
                 actuallyAddListeners();
+                Globals.IS_PLAYING = true;
             } else {
                 console.log("Player not ready! Waiting before next listener attempt");
                 setTimeout(addListeners, 1000);
@@ -241,6 +252,7 @@ function embeddedCode() {
 
     function initialiseParty() {
         console.log("NETFLIX PARTY EMBEDDED");
+        Globals.GET_PLAYER = getVideoPlayer;
         window.NetflixParty = Globals;
         addListeners();
     }
@@ -347,6 +359,12 @@ function embeddedCode() {
                 break;
             case "chat-message":
                 handleChatMessage(message.data);
+                break;
+            case "pause-video":
+                pause();
+                break;
+            case "play-video":
+                playAtTime(message.data.time);
                 break;
         }
     }
