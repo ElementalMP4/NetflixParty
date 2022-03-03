@@ -27,6 +27,11 @@ public class HttpRestController {
 		return fileReader.getTextFileContents("html/index.html");
 	}
 	
+	@RequestMapping(value = "/join", produces = "text/html", method = RequestMethod.GET)
+	public String joinRoute() {
+		return fileReader.getTextFileContents("html/join.html");
+	}
+	
 	@RequestMapping(value = "/avatar/{image}", produces = "image/png", method = RequestMethod.GET)
 	public byte[] avatarRoute(@PathVariable String image) {
 		return fileReader.getBinaryFileContents("/img/avatars/" + image + ".png");

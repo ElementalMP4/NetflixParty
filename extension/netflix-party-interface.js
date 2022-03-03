@@ -154,7 +154,134 @@ function embeddedCode() {
     .typing span:nth-child(3) {
         animation-delay: .4s;
     }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        padding-top: 100px;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+        border: none;
+    }
+    
+    .modal-content {
+        position: relative;
+        background-color: #1a1a1a;
+        margin: auto;
+        padding: 0;
+        width: 80%;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        -webkit-animation-name: animatetop;
+        -webkit-animation-duration: 0.4s;
+        animation-name: animatetop;
+        animation-duration: 0.4s;
+    }
+    
+    @keyframes animatetop {
+        from {
+            top: -300px;
+            opacity: 0
+        }
+        to {
+            top: 0;
+            opacity: 1
+        }
+    }
+    
+    .close {
+        color: white;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+    
+    .close:hover,
+    .close:focus {
+        color: #000;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    
+    .modal-header {
+        padding: 2px 16px;
+        background-color: #ff0000;
+        color: white;
+    }
+    
+    .modal-body {
+        padding: 2px 16px;
+        align-items: center;
+        text-align: center;
+    }
+
+    .modal-item {
+        margin: auto;
+        padding: 5px;
+        width: 50%;
+    }
+    
+    p,
+    h2 {
+        color: white;
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.5;
+    }
+
+    input[type=color] {
+        margin: auto;
+        width: 100%;
+        border-radius: 10px;
+    }
+
+    button {
+        color: white;
+        background-color: #960303;
+        border: none;
+        border-radius: 50px;
+        display: block;
+        margin: auto;
+        width: 100%;
+    }
+    
+    button:hover {
+        background-color: #d80000;
+    }
+
+    img.avatar-preview {
+        border-radius: 50%;
+        height: 150px;
+        width: 150px;
+    }
+
+    select {
+        background-color: #111111;
+        border: solid 2px grey;
+        border-radius: 50px;
+        display: block;
+        margin: auto;
+        padding: 15px;
+        outline: none;
+        box-sizing: border-box;
+        color: white;
+        width: 100%;
+    }
     `;
+
+    let modal;
+    let closeButton;
+
+    function hideModal() {
+        modal.style.display = "none";
+    }
+
+    function showModalMenu() {
+        modal.style.display = "block";
+    }
 
     console.log("Netflix Party - Better than Teleparty");
 
@@ -170,13 +297,17 @@ function embeddedCode() {
             case "colour":
                 return "#FF0000";
             case "avatar":
-                return "beagle";
+                return "default";
         }
     }
 
     function getStoredValue(value) {
         const storedVal = localStorage.getItem(value);
         return storedVal == null ? getDefault(value) : storedVal;
+    }
+
+    function saveValue(valueName, value) {
+        localStorage.setItem(valueName, value);
     }
 
     function pause() {
@@ -289,7 +420,56 @@ function embeddedCode() {
     }
 
     function displayLocalMessage(message) {
-        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "https://netflixparty.voidtech.de/avatar/system" });
+        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "https://netflixparty.voidtech.de/avatar/default" });
+    }
+
+    function setAvatarUrl(avatar) {
+        document.getElementById("avatar-preview").src = "https://netflixparty.voidtech.de/avatar/" + avatar;
+    }
+
+    function attachMenuListeners() {
+        closeButton = document.getElementById("close");
+        modal = document.getElementById("modal");
+
+        closeButton.onclick = function() {
+            hideModal();
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                hideModal();
+            }
+        }
+
+        document.addEventListener("keydown", function(event) {
+            if (event.code == "Escape") {
+                hideModal();
+            }
+        });
+
+        document.getElementById("avatar-input").onchange = function() {
+            setAvatarUrl(document.getElementById("avatar-input").value);
+        }
+
+        document.getElementById("save-button").onclick = function() {
+            let nickname = document.getElementById("nickname-input").value;
+            let colour = document.getElementById("colour-input").value;
+            let avatar = document.getElementById("avatar-input").value;
+            saveValue("username", nickname);
+            saveValue("colour", colour);
+            saveValue("avatar", avatar);
+            displayLocalMessage("Settings updated!");
+        };
+
+        window.addEventListener("keydown", function(event) {
+            if (event.code == "KeyI" && event.ctrlKey) {
+                document.getElementById("nickname-input").value = getStoredValue("username");
+                document.getElementById("colour-input").value = getStoredValue("colour");
+                document.getElementById("avatar-input").value = getStoredValue("avatar");
+                setAvatarUrl(getStoredValue("avatar"));
+                showModalMenu();
+            }
+        });
     }
 
     function injectPage() {
@@ -302,7 +482,54 @@ function embeddedCode() {
             <link href="https://fonts.googleapis.com/css2?family=Lobster+Two&display=swap" rel="stylesheet">
             <link href="https://fonts.googleapis.com/css2?family=Paytone+One&display=swap" rel="stylesheet">
         `);
-        //Re-format the netflix player
+        document.body.insertAdjacentHTML("afterbegin", `
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span id="close" class="close">&times;</span>
+                    <h2 id="modal-title">User Settings</h2>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-item">
+                        <p>Set your nickname</p><br>
+                        <input type="text" id="nickname-input" placeholder="Enter a nickname"><br><br>
+                    </div>
+                    <div class="modal-item">
+                        <p>Change your nickname colour</p><br>
+                        <input type="color" id="colour-input" value="#ff0000"><br><br>
+                    </div>
+                    <div class="modal-item">
+                        <img src="https://netflixparty.voidtech.de/avatar/default" id="avatar-preview" class="avatar-preview">
+                        <br>
+                        <label for="avatar-options" class="">Choose an avatar:</label><br><br>
+                        <select name="avatar-options" id="avatar-input">
+                            <option value="beagle">Beagle</option>
+                            <option value="bernese">Bernese</option>
+                            <option value="bichon">Bichon</option>
+                            <option value="birb">Birb</option>
+                            <option value="corgi">Corgi</option>
+                            <option value="hedgehog">Hedgehog</option>
+                            <option value="maincoon">Maincoon</option>
+                            <option value="mutt">Mutt</option>
+                            <option value="otter">Otter</option>
+                            <option value="persian">Persian</option>
+                            <option value="pom">Pom</option>
+                            <option value="pug">Pug</option>
+                            <option value="quokka">Quokka</option>
+                            <option value="siamese">Siamese</option>
+                            <option value="sloth">Sloth</option>
+                            <option value="tabby">Tabby</option>
+                            <option value="toad">Toad</option>
+                            <option value="tuxedo">Tuxedo</option>
+                        </select>
+                    </div>
+                    <div class="modal-item">
+                        <button id="save-button"><p>Save your settings</p></button><br><br>
+                    </div>
+                </div>
+            </div>
+        </div>`)
+            //Re-format the netflix player
         let videoDiv = document.querySelector("#appMountPoint > div > div > div.watch-video > div");
         videoDiv.style.display = "inline-block";
         videoDiv.style.width = "80%"
@@ -328,7 +555,11 @@ function embeddedCode() {
         Globals.CHAT_READY = true;
         //Chat Listener
         document.getElementById("chat-input").addEventListener("keyup", handleChatEvent);
+        //Menu listeners
+        attachMenuListeners();
+        //We are ready for business
         connectToParty();
+        pause();
     }
 
     function speakMessage(message) {
@@ -366,22 +597,25 @@ function embeddedCode() {
             case "play-video":
                 playAtTime(message.data.time);
                 break;
+            case "system-ping":
+                displayLocalMessage("API response time: " + (new Date().getTime() - message.response.start) + "ms");
+                break;
         }
     }
 
     function handleHelpCommand() {
         displayLocalMessage(`Chat Command Help:<br>
-    /help - shows this message<br><br>
-    /i [message] - changes your message to italics<br><br>
-    /u [message] - changes your message to underline<br><br>
-    /b [message] - makes your message bold<br><br>
-    /s [message] - changes your message to strikethrough<br><br>
-    /c [message] - changes your message to cursive<br><br>
-    /cc [message] - cHaNgEs YoUr TeXt LiKe ThIs<br><br>
-    /big [message] - makes your message big<br><br>
-    /r - reloads your session<br><br>
-    /tts - send a text-to-speech message<br><br>
-    /ping - get the API response time`);
+/help - shows this message<br>
+/i [message] - changes your message to italics<br>
+/u [message] - changes your message to underline<br>
+/b [message] - makes your message bold<br>
+/s [message] - changes your message to strikethrough<br>
+/c [message] - changes your message to cursive<br>
+/cc [message] - cHaNgEs YoUr TeXt LiKe ThIs<br>
+/big [message] - makes your message big<br>
+/r - reloads your session<br>
+/tts - send a text-to-speech message<br>
+/ping - get the API response time`);
     }
 
     function toCrazyCase(body) {
