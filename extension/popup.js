@@ -1,3 +1,5 @@
+"unsafe-inline";
+
 function showMessage(message) {
     document.getElementById("message").style.display = "block";
     document.getElementById("subtitle").style.display = "none";
@@ -15,6 +17,10 @@ Gateway.onclose = function() {
     console.log("Connection Lost");
 }
 
+function closePage() {
+    window.close();
+}
+
 function reloadWithRoomID(roomID) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
         var tab = tabs[0];
@@ -22,6 +28,7 @@ function reloadWithRoomID(roomID) {
         if (url.searchParams.has("roomID")) url.searchParams.set("roomID", roomID);
         else url.searchParams.append("roomID", roomID);
         chrome.tabs.create({ url: url.toString() });
+        chrome.tabs.remove(tab.id);
     });
 }
 

@@ -1,4 +1,7 @@
+"unsafe inline";
+
 function embeddedCode() {
+    "unsafe inline";
     var Globals = {
         LAST_MESSAGE_AUTHOR: "",
         ROOM_COLOUR: "",
@@ -6,13 +9,12 @@ function embeddedCode() {
         SESSION_ID: "",
         GATEWAY: {},
         GET_PLAYER: {},
-        CHAT_READY: false,
-        IS_PLAYING: false
+        CHAT_READY: false
     };
 
     Globals.GATEWAY = new WebSocket("wss://netflixparty.voidtech.de/gateway");
 
-    var getVideoPlayer = function() {
+    function getVideoPlayer() {
         var e = window.netflix.appContext.state.playerApp.getAPI().videoPlayer,
             t = e.getAllPlayerSessionIds().find((val => val.includes("watch")));
         return e.getVideoPlayerBySessionId(t);
@@ -313,7 +315,6 @@ function embeddedCode() {
     function pause() {
         if (getVideoPlayer().isPaused()) console.log("Ignoring pause event");
         else {
-            Globals.IS_PLAYING = false;
             console.log("Automated pause event fired");
             getVideoPlayer().pause();
         }
@@ -322,7 +323,6 @@ function embeddedCode() {
     function playAtTime(time) {
         if (getVideoPlayer().isPlaying()) console.log("Ignoring play event");
         else {
-            Globals.IS_PLAYING = true;
             console.log("Automated play event fired");
             getVideoPlayer().seek(time);
             getVideoPlayer().play();
@@ -346,21 +346,32 @@ function embeddedCode() {
     }
 
     function actuallyAddListeners() {
+        let video = document.getElementsByTagName("video")[0];
         try {
-            document.getElementsByTagName("video")[0].onpause = function() { handlePauseEvent() };
+            video.onpause = function() { handlePauseEvent() };
         } catch (error) {
             console.error(error);
             console.log("Could not change pause listener. This is not fine.");
         }
 
         try {
-            document.getElementsByTagName("video")[0].onplay = function() { handlePlayEvent() };
+            video.onplay = function() { handlePlayEvent() };
         } catch (error) {
             console.error(error);
             console.log("Could not change play listener. This is not fine.");
         }
 
-        injectPage();
+        //We observe the video element to see if the SRC value changes. If it does, we know that a new video has been set and we need to
+        //re attach our listeners so we can detect pause/play events.
+        observer = new MutationObserver((changes) => {
+            changes.forEach(change => {
+                if (change.attributeName.includes('src')) {
+                    console.log("Video SRC change detected. Reattaching listeners");
+                    actuallyAddListeners();
+                }
+            });
+        });
+        observer.observe(video, { attributes: true });
     }
 
     function addListeners() {
@@ -370,7 +381,7 @@ function embeddedCode() {
             if (player.isReady()) {
                 console.log("Adding listeners!");
                 actuallyAddListeners();
-                Globals.IS_PLAYING = true;
+                injectPage();
             } else {
                 console.log("Player not ready! Waiting before next listener attempt");
                 setTimeout(addListeners, 1000);
