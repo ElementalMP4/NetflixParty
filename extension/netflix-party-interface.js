@@ -1,7 +1,4 @@
-"unsafe inline";
-
 function embeddedCode() {
-    "unsafe inline";
     var Globals = {
         LAST_MESSAGE_AUTHOR: "",
         ROOM_COLOUR: "",
@@ -12,7 +9,9 @@ function embeddedCode() {
         CHAT_READY: false
     };
 
-    Globals.GATEWAY = new WebSocket("wss://netflixparty.voidtech.de/gateway");
+    const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
+
+    Globals.GATEWAY = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
 
     function getVideoPlayer() {
         var e = window.netflix.appContext.state.playerApp.getAPI().videoPlayer,
@@ -409,7 +408,7 @@ function embeddedCode() {
 
         let newMessage = `<div class="chat-message">`;
         if (Globals.LAST_MESSAGE_AUTHOR !== author) {
-            newMessage += `<img class="user-image" src="${modifiers.includes("system") ? avatar : ("https://netflixparty.voidtech.de/avatar/" + avatar)}">`;
+            newMessage += `<img class="user-image" src="${modifiers.includes("system") ? avatar : ("https://" + RESOURCE_URL + "/avatar/" + avatar)}">`;
             newMessage += `<p class="msg-nickname" style="color:${colour}">${author}</p><br>`;
         }
         newMessage += `<p ${modifiers}>${content}</p></div>`;
@@ -431,11 +430,11 @@ function embeddedCode() {
     }
 
     function displayLocalMessage(message) {
-        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "https://netflixparty.voidtech.de/avatar/default" });
+        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "https://" + RESOURCE_URL + "/avatar/default" });
     }
 
     function setAvatarUrl(avatar) {
-        document.getElementById("avatar-preview").src = "https://netflixparty.voidtech.de/avatar/" + avatar;
+        document.getElementById("avatar-preview").src = "https://" + RESOURCE_URL + "/avatar/" + avatar;
     }
 
     function attachMenuListeners() {
@@ -510,7 +509,7 @@ function embeddedCode() {
                         <input type="color" id="colour-input" value="#ff0000"><br><br>
                     </div>
                     <div class="modal-item">
-                        <img src="https://netflixparty.voidtech.de/avatar/default" id="avatar-preview" class="avatar-preview">
+                        <img src="https://${RESOURCE_URL}/avatar/default" id="avatar-preview" class="avatar-preview">
                         <br>
                         <label for="avatar-options" class="">Choose an avatar:</label><br><br>
                         <select name="avatar-options" id="avatar-input">
