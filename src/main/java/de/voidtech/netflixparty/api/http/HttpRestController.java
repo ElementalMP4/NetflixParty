@@ -27,9 +27,24 @@ public class HttpRestController {
 		return fileReader.getTextFileContents("html/index.html");
 	}
 	
-	@RequestMapping(value = "/join", produces = "text/html", method = RequestMethod.GET)
-	public String joinRoute() {
-		return fileReader.getTextFileContents("html/join.html");
+	@RequestMapping(value = "/style.css", produces = "text/css", method = RequestMethod.GET)
+	public String styleRoute() {
+		return fileReader.getTextFileContents("css/style.css");
+	}
+	
+	@RequestMapping(value = "/deadcat.gif", produces = "image/gif", method = RequestMethod.GET)
+	public byte[] catGifRoute() {
+		return fileReader.getBinaryFileContents("img/deadcat.gif");
+	}
+	
+	@RequestMapping(value = "/favicon.png", produces = "image/png", method = RequestMethod.GET)
+	public byte[] faviconRoute() {
+		return fileReader.getBinaryFileContents("img/favicon.png");
+	}
+	
+	@RequestMapping(value = "/favicon.ico", produces = "image/png", method = RequestMethod.GET)
+	public byte[] alternateFaviconRoute() {
+		return fileReader.getBinaryFileContents("img/favicon.png");
 	}
 	
 	@RequestMapping(value = "/avatar/{image}", produces = "image/png", method = RequestMethod.GET)

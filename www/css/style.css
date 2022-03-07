@@ -1,0 +1,22 @@
+h2 {
+    font-size: 60px;
+    color: red;
+    font-family: 'Paytone One', sans-serif;
+    letter-spacing: 0.03em;
+    margin: auto;
+    text-align: center;
+}
+
+body {
+    background-color: #111111;
+    margin: auto;
+}
+
+p {
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.5;
+    font-size: 15px;
+    margin: auto;
+    text-align: center;
+}
