@@ -17,10 +17,6 @@ Gateway.onclose = function() {
     console.log("Connection Lost");
 }
 
-function closePage() {
-    window.close();
-}
-
 function reloadWithRoomID(roomID) {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
         var tab = tabs[0];

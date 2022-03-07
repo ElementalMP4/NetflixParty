@@ -91,3 +91,11 @@ button {
 button:hover {
     background-color: #d80000;
 }
+
+.action-complete {
+    background-color: lightgreen;
+}
+
+.action-complete:hover {
+    background-color: lightgreen;
+}
