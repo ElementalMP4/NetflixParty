@@ -10,7 +10,7 @@ It is better than Teleparty.
 http.port=6969 //Set the HTTP/WebSocket port
 ```
 
-Note: if you want to spin up your own server, you will need to change the resource URL in the JS files.
+Note: if you want to spin up your own server, you will need to change the `RESOURCE_URL` value in the JS files to your own domain.
 
 # Using the Chrome Extension
 
