@@ -6,7 +6,9 @@ function embeddedCode() {
         SESSION_ID: "",
         GATEWAY: {},
         GET_PLAYER: {},
-        CHAT_READY: false
+        CHAT_READY: false,
+        TYPING_COUNT: 0,
+        TYPING: false
     };
 
     const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
@@ -307,6 +309,23 @@ function embeddedCode() {
         return storedVal == null ? getDefault(value) : storedVal;
     }
 
+    function showTypingMessage() {
+        document.getElementById("typing-message").style.display = "block";
+    }
+
+    function hideTypingMessage() {
+        document.getElementById("typing-message").style.display = "none";
+    }
+
+    function updateTyping(data) {
+        if (data.user == getStoredValue("username")) return;
+        if (data.mode == "start") Globals.TYPING_COUNT = Globals.TYPING_COUNT + 1;
+        else Globals.TYPING_COUNT = Globals.TYPING_COUNT - 1;
+
+        if (Globals.TYPING_COUNT > 0) showTypingMessage();
+        else hideTypingMessage();
+    };
+
     function saveValue(valueName, value) {
         localStorage.setItem(valueName, value);
     }
@@ -419,14 +438,6 @@ function embeddedCode() {
         let chatHistory = document.getElementById("chat-history");
         chatHistory.insertAdjacentHTML('afterbegin', newMessage);
         chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
-
-    function showTypingMessage() {
-        document.getElementById("typing-message").style.display = "block";
-    }
-
-    function hideTypingMessage() {
-        document.getElementById("typing-message").style.display = "none";
     }
 
     function displayLocalMessage(message) {
@@ -609,6 +620,9 @@ function embeddedCode() {
                 break;
             case "system-ping":
                 displayLocalMessage("API response time: " + (new Date().getTime() - message.response.start) + "ms");
+                break;
+            case "typing-update":
+                updateTyping(message.response);
                 break;
         }
     }
