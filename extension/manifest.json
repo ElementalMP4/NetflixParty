@@ -5,16 +5,17 @@
     "manifest_version": 2,
     "permissions": ["storage", "tabs", "activeTab"],
     "browser_action": {
-        "default_popup": "popup.html",
-        "default_icon": "icon.png"
+        "default_popup": "html/popup.html",
+        "default_icon": "img/icon.png"
     },
     "icons": {
-        "128": "icon.png",
-        "16": "icon.png",
-        "48": "icon.png"
+        "128": "img/icon.png",
+        "16": "img/icon.png",
+        "48": "img/icon.png"
     },
     "content_scripts": [{
         "matches": ["http://www.netflix.com/watch/*", "https://www.netflix.com/watch/*"],
-        "js": ["netflix-party-interface.js"]
-    }]
+        "js": ["js/netflix-party-interface.js"]
+    }],
+    "web_accessible_resources": ["img/*.png", "js/*.js", "css/*.css", "html/*.html"]
 }

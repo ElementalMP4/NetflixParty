@@ -93,9 +93,9 @@ button:hover {
 }
 
 .action-complete {
-    background-color: lightgreen;
+    background-color: rgb(0, 255, 55);
 }
 
 .action-complete:hover {
-    background-color: lightgreen;
+    background-color: rgb(0, 255, 55);
 }

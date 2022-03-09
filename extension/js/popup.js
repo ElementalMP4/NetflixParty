@@ -11,8 +11,8 @@ chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
         if (url.pathname == "/browse") {
             showMessage("Choose something to watch first, then open this up again to make a room!");
         } else if (url.pathname.includes("watch")) {
-            if (url.searchParams.has("roomID")) window.location.href = "shareroom.html";
-            else window.location.href = "createroom.html";
+            if (url.searchParams.has("roomID")) window.location.href = "../html/shareroom.html";
+            else window.location.href = "../html/createroom.html";
         }
     } else if (url.host == RESOURCE_URL) {
         showMessage("You don't need to visit this page (although you are more than welcome to!), the chrome extension will do everything for you!");
