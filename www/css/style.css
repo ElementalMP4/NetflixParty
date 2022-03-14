@@ -20,3 +20,19 @@ p {
     margin: auto;
     text-align: center;
 }
+
+img {
+    border-radius: 50%;
+    height: 75px;
+    width: 75px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+div.link-container {
+    background-color: grey;
+    border-radius: 10px;
+    margin: auto;
+    width: 45%;
+}

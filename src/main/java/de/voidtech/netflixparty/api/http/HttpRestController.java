@@ -32,6 +32,11 @@ public class HttpRestController {
 		return fileReader.getTextFileContents("css/style.css");
 	}
 	
+	@RequestMapping(value = "/netflix.js", produces = "text/javascript", method = RequestMethod.GET)
+	public String embeddedScriptRoute(){
+		return fileReader.getTextFileContents("js/netflix.js");
+	}
+	
 	@RequestMapping(value = "/deadcat.gif", produces = "image/gif", method = RequestMethod.GET)
 	public byte[] catGifRoute() {
 		return fileReader.getBinaryFileContents("img/deadcat.gif");
@@ -45,6 +50,16 @@ public class HttpRestController {
 	@RequestMapping(value = "/favicon.ico", produces = "image/png", method = RequestMethod.GET)
 	public byte[] alternateFaviconRoute() {
 		return fileReader.getBinaryFileContents("img/favicon.png");
+	}
+	
+	@RequestMapping(value = "/github.png", produces = "image/png", method = RequestMethod.GET)
+	public byte[] githubRoute() {
+		return fileReader.getBinaryFileContents("img/logos/github.png");
+	}
+	
+	@RequestMapping(value = "/chrome.png", produces = "image/png", method = RequestMethod.GET)
+	public byte[] chromeRoute() {
+		return fileReader.getBinaryFileContents("img/logos/chrome.png");
 	}
 	
 	@RequestMapping(value = "/avatar/{image}", produces = "image/png", method = RequestMethod.GET)

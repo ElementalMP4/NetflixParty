@@ -8,10 +8,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class FileReader {
+	
+	@Autowired
+	private ConfigService config;
 	
 	private static final String FILE_BASE_URL = "www/";
 	
@@ -36,24 +40,23 @@ public class FileReader {
 			byte[] contents = FileUtils.readFileToByteArray(new File(FILE_BASE_URL + fileName));
 			LOGGER.log(Level.INFO, "Loaded binary file '" + fileName + "'");
 			return contents;
-		} catch (IOException e) { 
+		} catch (IOException e) {
 			LOGGER.log(Level.SEVERE, "Error occurred during Service Execution: " + e.getMessage());
 		}
 		return null;
     }
     
     public String getTextFileContents(String fileName) {
-   		if (!textFileCache.containsKey(fileName)) textFileCache.put(fileName, readFile(fileName)); 
-       	return textFileCache.get(fileName);
+    	if (config.textCacheEnabled()) {
+    		if (!textFileCache.containsKey(fileName)) textFileCache.put(fileName, readFile(fileName));
+        	return textFileCache.get(fileName);
+    	} else return readFile(fileName);
     }
 
 	public byte[] getBinaryFileContents(String fileName) {
-		if (!binaryFileCache.containsKey(fileName)) binaryFileCache.put(fileName, readBinaryFile(fileName));
-    	return binaryFileCache.get(fileName);	
-	}
-	
-	public void clearCache() {
-		textFileCache.clear();
-		binaryFileCache.clear();
+		if (config.binaryCacheEnabled()) {
+			if (!binaryFileCache.containsKey(fileName)) binaryFileCache.put(fileName, readBinaryFile(fileName));
+	    	return binaryFileCache.get(fileName);	
+		} else return readBinaryFile(fileName);
 	}
 }

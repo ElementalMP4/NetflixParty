@@ -16,7 +16,7 @@ Note: if you want to spin up your own server, you will need to change the `RESOU
 
 ## Installation
 
-1) `git pull` this repository
+1) Download the latest release from this page
 2) Navigate to `chrome://extensions` in Google Chrome
 3) Enable developer mode
 4) Click load unpacked extension
