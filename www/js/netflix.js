@@ -574,8 +574,9 @@ function NetflixPartyEmbeddedSource() {
         //Make the typing thingy go away
         hideTypingMessage();
         Globals.CHAT_READY = true;
-        //Chat Listener
+        //Chat Listeners
         document.getElementById("chat-input").addEventListener("keyup", handleChatEvent);
+        document.getElementById("chat-input").addEventListener("blur", handleChatBlurEvent);
         //Menu listeners
         attachMenuListeners();
         //We are ready for business
@@ -679,6 +680,10 @@ function NetflixPartyEmbeddedSource() {
             Globals.TYPING = true;
             sendGatewayMessage({ "type": "typing-update", "data": { "mode": "start", "user": getStoredValue("username"), "roomID": Globals.ROOM_ID } });
         }
+    }
+
+    function handleChatBlurEvent(event) {
+        if (!event.isTrusted) event.preventDefault();
     }
 
     function handleChatEvent(event) {
