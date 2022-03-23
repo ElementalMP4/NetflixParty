@@ -1,4 +1,5 @@
 function NetflixPartyEmbeddedSource() {
+    "use strict";
     var Globals = {
         LAST_MESSAGE_AUTHOR: "",
         ROOM_COLOUR: "",

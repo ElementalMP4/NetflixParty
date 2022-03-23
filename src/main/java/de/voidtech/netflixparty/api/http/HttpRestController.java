@@ -32,11 +32,6 @@ public class HttpRestController {
 		return fileReader.getTextFileContents("css/style.css");
 	}
 	
-	@RequestMapping(value = "/netflix.js", produces = "text/javascript", method = RequestMethod.GET)
-	public String embeddedScriptRoute(){
-		return fileReader.getTextFileContents("js/netflix.js");
-	}
-	
 	@RequestMapping(value = "/deadcat.gif", produces = "image/gif", method = RequestMethod.GET)
 	public byte[] catGifRoute() {
 		return fileReader.getBinaryFileContents("img/deadcat.gif");
