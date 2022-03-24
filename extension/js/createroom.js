@@ -24,6 +24,7 @@ function reloadWithRoomID(roomID) {
         if (url.searchParams.has("roomID")) url.searchParams.set("roomID", roomID);
         else url.searchParams.append("roomID", roomID);
         chrome.tabs.update(tab.id, { url: url.toString() });
+        window.close();
     });
 }
 
