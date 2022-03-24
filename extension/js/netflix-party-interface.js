@@ -17,10 +17,14 @@ function NetflixPartyEmbeddedSource() {
     Globals.GATEWAY = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
 
     function getVideoPlayer() {
-        var e = window.netflix.appContext.state.playerApp.getAPI().videoPlayer,
-            t = e.getAllPlayerSessionIds().find((val => val.includes("watch")));
+        let e = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
+        let t = e.getAllPlayerSessionIds().find((val => val.includes("watch")));
         return e.getVideoPlayerBySessionId(t);
     };
+
+    function LogMessage(...message) {
+        console.log("\x1b[31m" + "[NetflixParty]" + "\x1b[0m", ...message);
+    }
 
     const STYLESHEET_RULES = `
     input[type=text] {
@@ -287,10 +291,8 @@ function NetflixPartyEmbeddedSource() {
         modal.style.display = "block";
     }
 
-    console.log("Netflix Party - Better than Teleparty");
-
     function sendGatewayMessage(message) {
-        console.log("Sent", message);
+        LogMessage("Sent", message);
         if (Globals.GATEWAY.readyState == Globals.GATEWAY.OPEN) Globals.GATEWAY.send(JSON.stringify(message));
     }
 
@@ -332,30 +334,30 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function pause() {
-        if (getVideoPlayer().isPaused()) console.log("Ignoring pause event");
+        if (getVideoPlayer().isPaused()) LogMessage("Ignoring pause event");
         else {
-            console.log("Automated pause event fired");
+            LogMessage("Automated pause event fired");
             getVideoPlayer().pause();
         }
     }
 
     function playAtTime(time) {
-        if (getVideoPlayer().isPlaying()) console.log("Ignoring play event");
+        if (getVideoPlayer().isPlaying()) LogMessage("Ignoring play event");
         else {
-            console.log("Automated play event fired");
+            LogMessage("Automated play event fired");
             getVideoPlayer().seek(time);
             getVideoPlayer().play();
         }
     }
 
     function handlePlayEvent() {
-        console.log("Playing at " + getVideoPlayer().getCurrentTime());
+        LogMessage("Playing at " + getVideoPlayer().getCurrentTime());
         displayLocalMessage("Video Playing at " + getVideoPlayer().getCurrentTime());
         sendGatewayMessage({ "type": "play-video", "data": { "timestamp": getVideoPlayer().getCurrentTime(), "roomID": Globals.ROOM_ID } });
     }
 
     function handlePauseEvent() {
-        console.log("Paused");
+        LogMessage("Paused");
         displayLocalMessage("Video Paused");
         sendGatewayMessage({ "type": "pause-video", "data": { "roomID": Globals.ROOM_ID } });
     }
@@ -370,22 +372,22 @@ function NetflixPartyEmbeddedSource() {
             video.onpause = function() { handlePauseEvent() };
         } catch (error) {
             console.error(error);
-            console.log("Could not change pause listener. This is not fine.");
+            LogMessage("Could not change pause listener. This is not fine.");
         }
 
         try {
             video.onplay = function() { handlePlayEvent() };
         } catch (error) {
             console.error(error);
-            console.log("Could not change play listener. This is not fine.");
+            LogMessage("Could not change play listener. This is not fine.");
         }
 
         //We observe the video element to see if the SRC value changes. If it does, we know that a new video has been set and we need to
         //re attach our listeners so we can detect pause/play events.
-        observer = new MutationObserver((changes) => {
+        let observer = new MutationObserver((changes) => {
             changes.forEach(change => {
                 if (change.attributeName.includes('src')) {
-                    console.log("Video SRC change detected. Reattaching listeners");
+                    LogMessage("Video SRC change detected. Reattaching listeners");
                     actuallyAddListeners();
                 }
             });
@@ -394,25 +396,25 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function addListeners() {
-        console.log("Attempting to add listeners...");
+        LogMessage("Attempting to add listeners...");
         let player = getVideoPlayer();
         if (player != undefined && document.getElementsByTagName("video")[0] != undefined) {
             if (player.isReady()) {
-                console.log("Adding listeners!");
+                LogMessage("Adding listeners!");
                 actuallyAddListeners();
-                injectPage();
+                connectToParty();
             } else {
-                console.log("Player not ready! Waiting before next listener attempt");
+                LogMessage("Player not ready! Waiting before next listener attempt");
                 setTimeout(addListeners, 1000);
             }
         } else {
-            console.log("Player undefined! Waiting before next listener attempt");
+            LogMessage("Player undefined! Waiting before next listener attempt");
             setTimeout(addListeners, 1000);
         }
     }
 
     function initialiseParty() {
-        console.log("NETFLIX PARTY EMBEDDED");
+        LogMessage("NP Source has been injected");
         Globals.GET_PLAYER = getVideoPlayer;
         window.NetflixParty = Globals;
         addListeners();
@@ -590,8 +592,8 @@ function NetflixPartyEmbeddedSource() {
         //Menu listeners
         attachMenuListeners();
         //We are ready for business
-        connectToParty();
         pause();
+        LogMessage("NetflixParty is ready for business");
     }
 
     function speakMessage(message) {
@@ -606,19 +608,22 @@ function NetflixPartyEmbeddedSource() {
     }
 
     Globals.GATEWAY.onopen = function() {
-        console.log("Gateway Connected");
+        LogMessage("Gateway Connected");
     };
 
     Globals.GATEWAY.onclose = function() {
-        console.log("Gateway Disconnected")
+        LogMessage("Gateway Disconnected")
     };
 
     Globals.GATEWAY.onmessage = function(msg) {
         const message = JSON.parse(msg.data);
-        console.log("Received", message);
+        LogMessage("Received", message);
         switch (message.type) {
             case "join-party":
-                if (message.success) Globals.ROOM_COLOUR = message.response.theme;
+                if (message.success) {
+                    Globals.ROOM_COLOUR = message.response.theme;
+                    injectPage();
+                }
                 break;
             case "chat-message":
                 handleChatMessage(message.data);
@@ -787,7 +792,8 @@ function NetflixPartyEmbeddedSource() {
 }
 
 function embedInPage(fn) {
-    console.log("EMBEDDING NETFLIX PARTY");
+    console.log("%cNetflixParty", "color: red; font-weight: bold; font-size: 60px; -webkit-text-stroke-width: 2px; -webkit-text-stroke-color: black;");
+    console.log("NetflixParty is getting ready...");
     const script = document.createElement("script");
     script.text = `(${fn})();`;
     document.documentElement.appendChild(script);
