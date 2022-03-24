@@ -430,7 +430,7 @@ function NetflixPartyEmbeddedSource() {
 
         let newMessage = `<div class="chat-message">`;
         if (Globals.LAST_MESSAGE_AUTHOR !== author) {
-            newMessage += `<img class="user-image" src="${modifiers.includes("system") ? avatar : ("https://" + RESOURCE_URL + "/avatar/" + avatar)}">`;
+            newMessage += `<img class="user-image" src="${"https://" + RESOURCE_URL + "/avatar/" + avatar}">`;
             newMessage += `<p class="msg-nickname" style="color:${colour}">${author}</p><br>`;
         }
         newMessage += `<p ${modifiers}>${content}</p></div>`;
@@ -444,7 +444,7 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function displayLocalMessage(message) {
-        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "https://" + RESOURCE_URL + "/avatar/default" });
+        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "default" });
     }
 
     function setAvatarUrl(avatar) {
@@ -486,7 +486,7 @@ function NetflixPartyEmbeddedSource() {
         };
 
         window.addEventListener("keydown", function(event) {
-            if (event.code == "KeyI" && event.ctrlKey) {
+            if (event.code == "KeyI" && event.ctrlKey && !event.shiftKey) {
                 document.getElementById("nickname-input").value = getStoredValue("username");
                 document.getElementById("colour-input").value = getStoredValue("colour");
                 document.getElementById("avatar-input").value = getStoredValue("avatar");

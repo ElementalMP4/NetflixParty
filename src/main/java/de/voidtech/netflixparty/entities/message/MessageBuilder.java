@@ -19,7 +19,7 @@ public class MessageBuilder {
 	//Chat Message Constants
 	public static final String SYSTEM_AUTHOR = "System";
 	public static final String SYSTEM_MODIFIERS = "system";
-	public static final String SYSTEM_AVATAR = "https://netflixparty.voidtech.de/avatar/system";
+	public static final String SYSTEM_AVATAR = "default";
 	
 	public static final JSONObject EMPTY_JSON = new JSONObject();
 	
