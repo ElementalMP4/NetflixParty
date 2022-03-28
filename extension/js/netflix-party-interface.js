@@ -380,9 +380,14 @@ function NetflixPartyEmbeddedSource() {
         }
     }
 
+    function convertMillisToTimestamp(millis) {
+        return new Date(millis).toISOString().slice(11, 19)
+    }
+
     function handlePlayEvent() {
-        LogMessage("Playing at " + getVideoPlayer().getCurrentTime());
-        displayLocalMessage("Video Playing at " + getVideoPlayer().getCurrentTime());
+        const timeStamp = convertMillisToTimestamp(getVideoPlayer().getCurrentTime());
+        LogMessage("Playing at " + timeStamp);
+        displayLocalMessage("Video Playing at " + timeStamp);
         sendGatewayMessage({ "type": "play-video", "data": { "timestamp": getVideoPlayer().getCurrentTime(), "roomID": Globals.ROOM_ID } });
     }
 
