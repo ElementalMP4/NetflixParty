@@ -33,7 +33,7 @@ Ignore any errors that Chrome may scream about, it is just complaining about Man
 2) When the video loads up, slap the NetflixParty icon and the room menu will open
 3) Set a room colour then smack the create room button
 4) Hit the NetflixParty icon again and press "Copy the room URL" to share the URL with your chums
-5) Your homies click the URL you sent and they will be sent straight to Netflix, no account required.
+5) Your homies click the URL you sent and they will be sent straight to Netflix, no NetflixParty account required.
 
 ## Using the chat
 
