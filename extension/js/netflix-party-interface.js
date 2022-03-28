@@ -4,9 +4,7 @@ function NetflixPartyEmbeddedSource() {
         LAST_MESSAGE_AUTHOR: "",
         ROOM_COLOUR: "",
         ROOM_ID: "",
-        SESSION_ID: "",
         GATEWAY: {},
-        GET_PLAYER: {},
         CHAT_READY: false,
         TYPING_COUNT: 0,
         TYPING: false,
@@ -439,7 +437,6 @@ function NetflixPartyEmbeddedSource() {
 
     function initialiseParty() {
         LogMessage("Source has been injected");
-        Globals.GET_PLAYER = getVideoPlayer;
         window.NetflixParty = Globals;
         addListeners();
     }
