@@ -9,7 +9,11 @@ function NetflixPartyEmbeddedSource() {
         GET_PLAYER: {},
         CHAT_READY: false,
         TYPING_COUNT: 0,
-        TYPING: false
+        TYPING: false,
+        CONTROL_FREEZER: {
+            ControlsFrozen: false,
+            ControlFreezeTimer: {}
+        }
     };
 
     const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
@@ -24,6 +28,19 @@ function NetflixPartyEmbeddedSource() {
 
     function LogMessage(...message) {
         console.log("\x1b[31m" + "[NetflixParty]" + "\x1b[0m", ...message);
+    }
+
+    function controlsFrozen() {
+        return Globals.CONTROL_FREEZER.ControlsFrozen;
+    }
+
+    function freezeControls() {
+        LogMessage("Controls frozen");
+        Globals.CONTROL_FREEZER.ControlsFrozen = true;
+        Globals.CONTROL_FREEZER.ControlFreezeTimer = setTimeout(() => {
+            Globals.CONTROL_FREEZER.ControlsFrozen = false;
+            LogMessage("Controls unfrozen");
+        }, 500);
     }
 
     const STYLESHEET_RULES = `
@@ -41,7 +58,8 @@ function NetflixPartyEmbeddedSource() {
     input[type=text]:focus {
         border-bottom: 2px solid #8f2727
     }
-    .chat {
+    
+    div.chat {
         height: 91%;
         overflow-y: scroll;
         overflow-x: hidden;
@@ -54,14 +72,14 @@ function NetflixPartyEmbeddedSource() {
         position: relative;
     }
     
-    .chat-message {
+    div.chat-message {
         background-color: #212121;
         border-radius: 5px;
         animation: slide-up 0.4s ease;
         padding: 3px;
     }
     
-    .chat-message:hover {
+    div.chat-message:hover {
         background-color: #292929;
     }
     
@@ -88,6 +106,7 @@ function NetflixPartyEmbeddedSource() {
         padding-right: 5px;
         display: inline;
     }
+
     ::-webkit-scrollbar {
         width: 5px;
     }
@@ -100,6 +119,7 @@ function NetflixPartyEmbeddedSource() {
      ::-webkit-scrollbar-thumb:hover {
         background: red;
     }
+
     p.typing-message {
         padding: 0%;
         color: grey;
@@ -163,7 +183,7 @@ function NetflixPartyEmbeddedSource() {
         animation-delay: .4s;
     }
 
-    .modal {
+    div.modal {
         display: none;
         position: fixed;
         z-index: 1;
@@ -177,7 +197,7 @@ function NetflixPartyEmbeddedSource() {
         border: none;
     }
     
-    .modal-content {
+    div.modal-content {
         position: relative;
         background-color: #1a1a1a;
         margin: auto;
@@ -246,7 +266,7 @@ function NetflixPartyEmbeddedSource() {
         border-radius: 10px;
     }
 
-    button {
+    button.np-button {
         color: white;
         background-color: #960303;
         border: none;
@@ -256,7 +276,7 @@ function NetflixPartyEmbeddedSource() {
         width: 100%;
     }
     
-    button:hover {
+    button.np-button:hover {
         background-color: #d80000;
     }
 
@@ -334,17 +354,21 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function pause() {
+        if (controlsFrozen()) return;
         if (getVideoPlayer().isPaused()) LogMessage("Ignoring pause event");
         else {
             LogMessage("Automated pause event fired");
+            freezeControls();
             getVideoPlayer().pause();
         }
     }
 
     function playAtTime(time) {
+        if (controlsFrozen()) return;
         if (getVideoPlayer().isPlaying()) LogMessage("Ignoring play event");
         else {
             LogMessage("Automated play event fired");
+            freezeControls();
             getVideoPlayer().seek(time);
             getVideoPlayer().play();
         }
@@ -372,14 +396,14 @@ function NetflixPartyEmbeddedSource() {
             video.onpause = function() { handlePauseEvent() };
         } catch (error) {
             console.error(error);
-            LogMessage("Could not change pause listener. This is not fine.");
+            LogMessage("Could not change pause listener.");
         }
 
         try {
             video.onplay = function() { handlePlayEvent() };
         } catch (error) {
             console.error(error);
-            LogMessage("Could not change play listener. This is not fine.");
+            LogMessage("Could not change play listener.");
         }
 
         //We observe the video element to see if the SRC value changes. If it does, we know that a new video has been set and we need to
@@ -414,7 +438,7 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function initialiseParty() {
-        LogMessage("NP Source has been injected");
+        LogMessage("Source has been injected");
         Globals.GET_PLAYER = getVideoPlayer;
         window.NetflixParty = Globals;
         addListeners();
@@ -496,6 +520,17 @@ function NetflixPartyEmbeddedSource() {
         });
     }
 
+    function attachChatListeners() {
+        document.getElementById("chat-input").addEventListener("keyup", handleChatEvent);
+        document.getElementById("chat-input").addEventListener("blur", handleChatBlurEvent);
+
+        window.addEventListener("click", event => {
+            if (event.target.id == "chat-input") document.getElementById("chat-input").focus();
+            else document.getElementById("chat-input").blur();
+        });
+    }
+
+    //This function is a mess, but it works. Never ever ever touch this 
     function injectPage() {
         //Add stylesheet
         let stylesheet = document.createElement("style");
@@ -548,12 +583,12 @@ function NetflixPartyEmbeddedSource() {
                         </select>
                     </div>
                     <div class="modal-item">
-                        <button id="save-button"><p>Save your settings</p></button><br><br>
+                        <button class="np-button" id="save-button"><p>Save your settings</p></button><br><br>
                     </div>
                 </div>
             </div>
-        </div>`)
-            //Re-format the netflix player
+        </div>`);
+        //Re-format the netflix player
         let videoDiv = document.querySelector("#appMountPoint > div > div > div.watch-video > div");
         videoDiv.style.display = "inline-block";
         videoDiv.style.width = "80%"
@@ -577,23 +612,13 @@ function NetflixPartyEmbeddedSource() {
         //Make the typing thingy go away
         hideTypingMessage();
         Globals.CHAT_READY = true;
-        //Chat Listeners
-        document.getElementById("chat-input").addEventListener("keyup", handleChatEvent);
-        document.getElementById("chat-input").addEventListener("blur", handleChatBlurEvent);
-
-        window.addEventListener("click", event => {
-            if (event.target.id == "chat-input") {
-                document.getElementById("chat-input").focus();
-            } else {
-                document.getElementById("chat-input").blur();
-            }
-        })
-
-        //Menu listeners
+        //Add some more listeners
         attachMenuListeners();
+        attachChatListeners();
         //We are ready for business
         pause();
         LogMessage("NetflixParty is ready for business");
+        displayLocalMessage("Press ctrl+i to open the user menu and customise your profile!");
     }
 
     function speakMessage(message) {
