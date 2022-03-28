@@ -8,6 +8,8 @@ It is better than Teleparty.
 
 ```
 http.port=6969 //Set the HTTP/WebSocket port
+cache.TextIsEnabled=true //Choose whether text files should be cached
+cache.BinaryIsEnabled=true //Choose whether binary files should be cached
 ```
 
 Note: if you want to spin up your own server, you will need to change the `RESOURCE_URL` value in the JS files to your own domain.
