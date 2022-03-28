@@ -28,9 +28,10 @@ Note: if you want to spin up your own server, you will need to change the `RESOU
 ## Usage
 
 1) Go to Netflix and choose something to watch
-2) When the video loads up, slap the Netflix icon and the room menu will open
+2) When the video loads up, slap the NetflixParty icon and the room menu will open
 3) Set a room colour then smack the create room button
-4) Send the URL in the search bar to people who you want to join the room
+4) Hit the NetflixParty icon again and press "Copy the room URL" to share the URL with your chums
+5) Your homies click the URL you sent and they will be sent straight to Netflix, no account required.
 
 ## Using the chat
 
