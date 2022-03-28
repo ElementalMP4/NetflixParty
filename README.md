@@ -25,6 +25,8 @@ Note: if you want to spin up your own server, you will need to change the `RESOU
 5) Navigate to the `extension` folder in the files you just downloaded
 6) Chrome should now load the manifest file 
 
+Ignore any errors that Chrome may scream about, it is just complaining about Manifest V2 being deprecated.
+
 ## Usage
 
 1) Go to Netflix and choose something to watch
