@@ -14,6 +14,14 @@ function NetflixPartyEmbeddedSource() {
         }
     };
 
+    const ConsoleColour = {
+        Green: "\x1b[32m",
+        Red: "\x1b[31m",
+        Yellow: "\x1b[33m",
+        Blue: "\x1b[34m",
+        Reset: "\x1b[0m"
+    };
+
     const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
 
     Globals.GATEWAY = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
@@ -25,7 +33,7 @@ function NetflixPartyEmbeddedSource() {
     };
 
     function LogMessage(...message) {
-        console.log("\x1b[31m" + "[NetflixParty]" + "\x1b[0m", ...message);
+        console.log(ConsoleColour.Red + "[NetflixParty]" + ConsoleColour.Reset, ...message);
     }
 
     function controlsFrozen() {
