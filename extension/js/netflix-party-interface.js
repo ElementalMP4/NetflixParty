@@ -258,16 +258,20 @@ function NetflixPartyEmbeddedSource() {
     `;
 
     var Globals = {
-        LAST_MESSAGE_AUTHOR: "",
-        ROOM_COLOUR: "",
-        ROOM_ID: "",
-        GATEWAY: {},
-        CHAT_READY: false,
-        TYPING_COUNT: 0,
-        TYPING: false,
-        CONTROL_FREEZER: {
+        LastMessageAuthor: "",
+        RoomColour: "",
+        RoomID: "",
+        Gateway: {},
+        ChatReady: false,
+        TypingCount: 0,
+        IsTyping: false,
+        ControlFreezer: {
             ControlsFrozen: false,
             ControlFreezeTimer: {}
+        },
+        Menu: {
+            Modal: {},
+            CloseButton: {}
         }
     };
 
@@ -281,12 +285,13 @@ function NetflixPartyEmbeddedSource() {
 
     const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
 
-    Globals.GATEWAY = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
+    Globals.Gateway = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
 
+    //Use this to control the netflix player. Do NOT control the <video> element directly. Only use it for listening
     function getVideoPlayer() {
-        let e = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
-        let t = e.getAllPlayerSessionIds().find((val => val.includes("watch")));
-        return e.getVideoPlayerBySessionId(t);
+        let netflixAPI = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
+        let session = netflixAPI.getAllPlayerSessionIds().find((sessionID => sessionID.includes("watch")));
+        return netflixAPI.getVideoPlayerBySessionId(session);
     };
 
     function LogMessage(...message) {
@@ -294,32 +299,29 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function controlsFrozen() {
-        return Globals.CONTROL_FREEZER.ControlsFrozen;
+        return Globals.ControlFreezer.ControlsFrozen;
     }
 
     function freezeControls() {
         LogMessage("Controls frozen");
-        Globals.CONTROL_FREEZER.ControlsFrozen = true;
-        Globals.CONTROL_FREEZER.ControlFreezeTimer = setTimeout(() => {
-            Globals.CONTROL_FREEZER.ControlsFrozen = false;
+        Globals.ControlFreezer.ControlsFrozen = true;
+        Globals.ControlFreezer.ControlFreezeTimer = setTimeout(() => {
+            Globals.ControlFreezer.ControlsFrozen = false;
             LogMessage("Controls unfrozen");
         }, 500);
     }
 
-    let modal;
-    let closeButton;
-
     function hideModal() {
-        modal.style.display = "none";
+        Globals.Menu.Modal.style.display = "none";
     }
 
     function showModalMenu() {
-        modal.style.display = "block";
+        Globals.Menu.Modal.style.display = "block";
     }
 
     function sendGatewayMessage(message) {
         LogMessage("Sent", message);
-        if (Globals.GATEWAY.readyState == Globals.GATEWAY.OPEN) Globals.GATEWAY.send(JSON.stringify(message));
+        if (Globals.Gateway.readyState == Globals.Gateway.OPEN) Globals.Gateway.send(JSON.stringify(message));
     }
 
     function getDefault(value) {
@@ -348,10 +350,10 @@ function NetflixPartyEmbeddedSource() {
 
     function updateTyping(data) {
         if (data.user == getStoredValue("username")) return;
-        if (data.mode == "start") Globals.TYPING_COUNT = Globals.TYPING_COUNT + 1;
-        else Globals.TYPING_COUNT = Globals.TYPING_COUNT - 1;
+        if (data.mode == "start") Globals.TypingCount = Globals.TypingCount + 1;
+        else Globals.TypingCount = Globals.TypingCount - 1;
 
-        if (Globals.TYPING_COUNT > 0) showTypingMessage();
+        if (Globals.TypingCount > 0) showTypingMessage();
         else hideTypingMessage();
     };
 
@@ -388,17 +390,17 @@ function NetflixPartyEmbeddedSource() {
         const timeStamp = convertMillisToTimestamp(getVideoPlayer().getCurrentTime());
         LogMessage("Playing at " + timeStamp);
         displayLocalMessage("Video Playing at " + timeStamp);
-        sendGatewayMessage({ "type": "play-video", "data": { "timestamp": getVideoPlayer().getCurrentTime(), "roomID": Globals.ROOM_ID } });
+        sendGatewayMessage({ "type": "play-video", "data": { "timestamp": getVideoPlayer().getCurrentTime(), "roomID": Globals.RoomID } });
     }
 
     function handlePauseEvent() {
         LogMessage("Paused");
         displayLocalMessage("Video Paused");
-        sendGatewayMessage({ "type": "pause-video", "data": { "roomID": Globals.ROOM_ID } });
+        sendGatewayMessage({ "type": "pause-video", "data": { "roomID": Globals.RoomID } });
     }
 
     function connectToParty() {
-        sendGatewayMessage({ "type": "join-party", "data": { "roomID": Globals.ROOM_ID, "username": getStoredValue("username") } });
+        sendGatewayMessage({ "type": "join-party", "data": { "roomID": Globals.RoomID, "username": getStoredValue("username") } });
     }
 
     function actuallyAddListeners() {
@@ -455,7 +457,7 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function addChatMessage(data) {
-        if (!Globals.CHAT_READY) return;
+        if (!Globals.ChatReady) return;
         const author = data.author;
         const colour = data.colour;
         const content = data.content;
@@ -463,14 +465,14 @@ function NetflixPartyEmbeddedSource() {
         const avatar = data.avatar;
 
         let newMessage = `<div class="chat-message">`;
-        if (Globals.LAST_MESSAGE_AUTHOR !== author) {
+        if (Globals.LastMessageAuthor !== author) {
             newMessage += `<img class="user-image" src="${"https://" + RESOURCE_URL + "/avatar/" + avatar}">`;
             newMessage += `<p class="msg-nickname" style="color:${colour}">${author}</p><br>`;
         }
         newMessage += `<p ${modifiers}>${content}</p></div>`;
-        if (Globals.LAST_MESSAGE_AUTHOR !== author) newMessage += "<br>";
+        if (Globals.LastMessageAuthor !== author) newMessage += "<br>";
 
-        Globals.LAST_MESSAGE_AUTHOR = author;
+        Globals.LastMessageAuthor = author;
 
         let chatHistory = document.getElementById("chat-history");
         chatHistory.insertAdjacentHTML('afterbegin', newMessage);
@@ -478,7 +480,7 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function displayLocalMessage(message) {
-        addChatMessage({ "author": "System", "colour": Globals.ROOM_COLOUR, "content": message, "modifiers": "system", "avatar": "default" });
+        addChatMessage({ "author": "System", "colour": Globals.RoomColour, "content": message, "modifiers": "system", "avatar": "default" });
     }
 
     function setAvatarUrl(avatar) {
@@ -486,15 +488,15 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function attachMenuListeners() {
-        closeButton = document.getElementById("close");
-        modal = document.getElementById("modal");
+        Globals.Menu.CloseButton = document.getElementById("close");
+        Globals.Menu.Modal = document.getElementById("modal");
 
-        closeButton.onclick = function() {
+        Globals.Menu.CloseButton.onclick = function() {
             hideModal();
         }
 
         window.onclick = function(event) {
-            if (event.target == modal) {
+            if (event.target == Globals.Menu.Modal) {
                 hideModal();
             }
         }
@@ -621,7 +623,7 @@ function NetflixPartyEmbeddedSource() {
         `);
         //Make the typing thingy go away
         hideTypingMessage();
-        Globals.CHAT_READY = true;
+        Globals.ChatReady = true;
         //Add some more listeners
         attachMenuListeners();
         attachChatListeners();
@@ -642,21 +644,21 @@ function NetflixPartyEmbeddedSource() {
         addChatMessage(data);
     }
 
-    Globals.GATEWAY.onopen = function() {
+    Globals.Gateway.onopen = function() {
         LogMessage("Gateway Connected");
     };
 
-    Globals.GATEWAY.onclose = function() {
+    Globals.Gateway.onclose = function() {
         LogMessage("Gateway Disconnected")
     };
 
-    Globals.GATEWAY.onmessage = function(msg) {
+    Globals.Gateway.onmessage = function(msg) {
         const message = JSON.parse(msg.data);
         LogMessage("Received", message);
         switch (message.type) {
             case "join-party":
                 if (message.success) {
-                    Globals.ROOM_COLOUR = message.response.theme;
+                    Globals.RoomColour = message.response.theme;
                     injectPage();
                 }
                 break;
@@ -719,16 +721,16 @@ function NetflixPartyEmbeddedSource() {
     }
 
     function sendTypingStop() {
-        if (Globals.TYPING) {
-            Globals.TYPING = false;
-            sendGatewayMessage({ "type": "typing-update", "data": { "mode": "stop", "user": getStoredValue("username"), "roomID": Globals.ROOM_ID } });
+        if (Globals.IsTyping) {
+            Globals.IsTyping = false;
+            sendGatewayMessage({ "type": "typing-update", "data": { "mode": "stop", "user": getStoredValue("username"), "roomID": Globals.RoomID } });
         }
     }
 
     function sendTypingStart() {
-        if (!Globals.TYPING) {
-            Globals.TYPING = true;
-            sendGatewayMessage({ "type": "typing-update", "data": { "mode": "start", "user": getStoredValue("username"), "roomID": Globals.ROOM_ID } });
+        if (!Globals.IsTyping) {
+            Globals.IsTyping = true;
+            sendGatewayMessage({ "type": "typing-update", "data": { "mode": "start", "user": getStoredValue("username"), "roomID": Globals.RoomID } });
         }
     }
 
@@ -804,7 +806,7 @@ function NetflixPartyEmbeddedSource() {
                 sendGatewayMessage({
                     "type": "chat-message",
                     "data": {
-                        "roomID": Globals.ROOM_ID,
+                        "roomID": Globals.RoomID,
                         "content": message,
                         "colour": getStoredValue("colour"),
                         "author": getStoredValue("username"),
@@ -822,7 +824,7 @@ function NetflixPartyEmbeddedSource() {
     }
 
     let url = new URL(location.href);
-    Globals.ROOM_ID = url.searchParams.get("roomID");
+    Globals.RoomID = url.searchParams.get("roomID");
     initialiseParty();
 }
 
