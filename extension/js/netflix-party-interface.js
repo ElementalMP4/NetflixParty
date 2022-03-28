@@ -1,54 +1,5 @@
 function NetflixPartyEmbeddedSource() {
     "use strict";
-    var Globals = {
-        LAST_MESSAGE_AUTHOR: "",
-        ROOM_COLOUR: "",
-        ROOM_ID: "",
-        GATEWAY: {},
-        CHAT_READY: false,
-        TYPING_COUNT: 0,
-        TYPING: false,
-        CONTROL_FREEZER: {
-            ControlsFrozen: false,
-            ControlFreezeTimer: {}
-        }
-    };
-
-    const ConsoleColour = {
-        Green: "\x1b[32m",
-        Red: "\x1b[31m",
-        Yellow: "\x1b[33m",
-        Blue: "\x1b[34m",
-        Reset: "\x1b[0m"
-    };
-
-    const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
-
-    Globals.GATEWAY = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
-
-    function getVideoPlayer() {
-        let e = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
-        let t = e.getAllPlayerSessionIds().find((val => val.includes("watch")));
-        return e.getVideoPlayerBySessionId(t);
-    };
-
-    function LogMessage(...message) {
-        console.log(ConsoleColour.Red + "[NetflixParty]" + ConsoleColour.Reset, ...message);
-    }
-
-    function controlsFrozen() {
-        return Globals.CONTROL_FREEZER.ControlsFrozen;
-    }
-
-    function freezeControls() {
-        LogMessage("Controls frozen");
-        Globals.CONTROL_FREEZER.ControlsFrozen = true;
-        Globals.CONTROL_FREEZER.ControlFreezeTimer = setTimeout(() => {
-            Globals.CONTROL_FREEZER.ControlsFrozen = false;
-            LogMessage("Controls unfrozen");
-        }, 500);
-    }
-
     const STYLESHEET_RULES = `
     input[type=text] {
         color: white;
@@ -305,6 +256,55 @@ function NetflixPartyEmbeddedSource() {
         width: 100%;
     }
     `;
+
+    var Globals = {
+        LAST_MESSAGE_AUTHOR: "",
+        ROOM_COLOUR: "",
+        ROOM_ID: "",
+        GATEWAY: {},
+        CHAT_READY: false,
+        TYPING_COUNT: 0,
+        TYPING: false,
+        CONTROL_FREEZER: {
+            ControlsFrozen: false,
+            ControlFreezeTimer: {}
+        }
+    };
+
+    const ConsoleColour = {
+        Green: "\x1b[32m",
+        Red: "\x1b[31m",
+        Yellow: "\x1b[33m",
+        Blue: "\x1b[34m",
+        Reset: "\x1b[0m"
+    };
+
+    const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
+
+    Globals.GATEWAY = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
+
+    function getVideoPlayer() {
+        let e = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
+        let t = e.getAllPlayerSessionIds().find((val => val.includes("watch")));
+        return e.getVideoPlayerBySessionId(t);
+    };
+
+    function LogMessage(...message) {
+        console.log(ConsoleColour.Red + "[NetflixParty]" + ConsoleColour.Reset, ...message);
+    }
+
+    function controlsFrozen() {
+        return Globals.CONTROL_FREEZER.ControlsFrozen;
+    }
+
+    function freezeControls() {
+        LogMessage("Controls frozen");
+        Globals.CONTROL_FREEZER.ControlsFrozen = true;
+        Globals.CONTROL_FREEZER.ControlFreezeTimer = setTimeout(() => {
+            Globals.CONTROL_FREEZER.ControlsFrozen = false;
+            LogMessage("Controls unfrozen");
+        }, 500);
+    }
 
     let modal;
     let closeButton;
