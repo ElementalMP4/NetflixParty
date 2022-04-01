@@ -27,6 +27,10 @@ Note: if you want to spin up your own server, you will need to change the `RESOU
 
 Ignore any errors that Chrome may scream about, it is just complaining about Manifest V2 being deprecated.
 
+## Why no Chrome Store?
+
+Due to my age and the use of Manifest V2, this extension can't be put on the chrome store yet. However, by the time I port this to Manifest V3 I'll probably be the right age to get this on the chrome store. 
+
 ## Usage
 
 1) Go to Netflix and choose something to watch
