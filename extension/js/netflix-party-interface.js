@@ -1,559 +1,203 @@
-function NetflixPartyEmbeddedSource() {
-    "use strict";
-    const STYLESHEET_RULES = `
-    input[type=text] {
-        color: white;
-        background-color: #292929;
-        border: none;
-        border-bottom: 2px solid grey;
-        outline: none;
-        width: 100%;
-        float: left;
-        font-size: 14px;
+"use strict";
+
+var Globals = {
+    LastMessageAuthor: "",
+    RoomColour: "",
+    RoomID: "",
+    Gateway: {},
+    ChatReady: false,
+    TypingCount: 0,
+    IsTyping: false,
+    ControlFreezer: {
+        ControlsFrozen: false,
+        ControlFreezeTimer: {}
+    },
+    Menu: {
+        Modal: {},
+        CloseButton: {}
     }
-    
-    input[type=text]:focus {
-        border-bottom: 2px solid #8f2727
+};
+
+const ConsoleColour = {
+    Green: "\x1b[32m",
+    Red: "\x1b[31m",
+    Yellow: "\x1b[33m",
+    Blue: "\x1b[34m",
+    Reset: "\x1b[0m"
+};
+
+const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
+
+Globals.Gateway = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
+
+function LogMessage(...message) {
+    console.log(ConsoleColour.Red + "[NetflixParty]" + ConsoleColour.Reset, ...message);
+}
+
+function controlsFrozen() {
+    return Globals.ControlFreezer.ControlsFrozen;
+}
+
+function freezeControls() {
+    LogMessage("Controls frozen");
+    Globals.ControlFreezer.ControlsFrozen = true;
+    Globals.ControlFreezer.ControlFreezeTimer = setTimeout(() => {
+        Globals.ControlFreezer.ControlsFrozen = false;
+        LogMessage("Controls unfrozen");
+    }, 500);
+}
+
+function hideModal() {
+    Globals.Menu.Modal.style.display = "none";
+}
+
+function showModalMenu() {
+    Globals.Menu.Modal.style.display = "block";
+}
+
+function sendGatewayMessage(message) {
+    LogMessage("Sent", message);
+    if (Globals.Gateway.readyState == Globals.Gateway.OPEN) Globals.Gateway.send(JSON.stringify(message));
+}
+
+function getDefault(value) {
+    switch (value) {
+        case "username":
+            return "Netflix Party User";
+        case "colour":
+            return "#FF0000";
+        case "avatar":
+            return "default";
     }
-    
-    div.chat {
-        height: 91%;
-        overflow-y: scroll;
-        overflow-x: hidden;
-        overflow: auto;
-        display: flex;
-        flex-direction: column-reverse;
-        background-color: #1a1a1a;
-        overflow-wrap: break-word;
-        white-space: pre-wrap;
-        position: relative;
+}
+
+function getStoredValue(value) {
+    const storedVal = localStorage.getItem(value);
+    return storedVal == null ? getDefault(value) : storedVal;
+}
+
+function showTypingMessage() {
+    document.getElementById("typing-message").style.display = "block";
+}
+
+function hideTypingMessage() {
+    document.getElementById("typing-message").style.display = "none";
+}
+
+function updateTyping(data) {
+    if (data.user == getStoredValue("username")) return;
+    if (data.mode == "start") Globals.TypingCount = Globals.TypingCount + 1;
+    else Globals.TypingCount = Globals.TypingCount - 1;
+
+    if (Globals.TypingCount > 0) showTypingMessage();
+    else hideTypingMessage();
+};
+
+function saveValue(valueName, value) {
+    localStorage.setItem(valueName, value);
+}
+
+function initialiseParty() {
+    LogMessage("Source has been injected");
+    //Used for debugging
+    window.NetflixParty = Globals;
+    connectToParty();
+}
+
+function addChatMessage(data) {
+    if (!Globals.ChatReady) return;
+    const author = data.author;
+    const colour = data.colour;
+    const content = data.content;
+    const modifiers = data.modifiers !== "" ? `class="${data.modifiers}"` : "";
+    const avatar = data.avatar;
+
+    let newMessage = `<div class="chat-message">`;
+    if (Globals.LastMessageAuthor !== author) {
+        newMessage += `<img class="user-image" src="${"https://" + RESOURCE_URL + "/avatar/" + avatar}">`;
+        newMessage += `<p class="msg-nickname" style="color:${colour}">${author}</p><br>`;
     }
-    
-    div.chat-message {
-        background-color: #212121;
-        border-radius: 5px;
-        animation: slide-up 0.4s ease;
-        padding: 3px;
-    }
-    
-    div.chat-message:hover {
-        background-color: #292929;
-    }
-    
-    p {
-        color: white;
-        font-family: Helvetica;
-        font-size: 14px;
-        display: inline;
-    }
-    
-    p.msg-nickname {
-        font-size: 16px;
-        font-family: 'Paytone One', sans-serif;
-        vertical-align: middle;
-        overflow-wrap: break-word;
-        display: inline;
-    }
-    
-    img.user-image {
-        border-radius: 50%;
-        height: 30px;
-        width: 30px;
-        vertical-align: middle;
-        padding-right: 5px;
-        display: inline;
+    newMessage += `<p ${modifiers}>${content}</p></div>`;
+    if (Globals.LastMessageAuthor !== author) newMessage += "<br>";
+
+    Globals.LastMessageAuthor = author;
+
+    let chatHistory = document.getElementById("chat-history");
+    chatHistory.insertAdjacentHTML('afterbegin', newMessage);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+function displayLocalMessage(message) {
+    addChatMessage({ "author": "System", "colour": Globals.RoomColour, "content": message, "modifiers": "system", "avatar": "default" });
+}
+
+function setAvatarUrl(avatar) {
+    document.getElementById("avatar-preview").src = "https://" + RESOURCE_URL + "/avatar/" + avatar;
+}
+
+function attachMenuListeners() {
+    Globals.Menu.CloseButton = document.getElementById("close");
+    Globals.Menu.Modal = document.getElementById("modal");
+
+    Globals.Menu.CloseButton.onclick = function() {
+        hideModal();
     }
 
-    ::-webkit-scrollbar {
-        width: 5px;
-    }
-    
-     ::-webkit-scrollbar-thumb {
-        background: #ab1400;
-        border-radius: 10px;
-    }
-    
-     ::-webkit-scrollbar-thumb:hover {
-        background: red;
-    }
-
-    p.typing-message {
-        padding: 0%;
-        color: grey;
-        font-style: italic;
-    }
-    
-    p.system {
-        color: grey;
-        font-style: italic;
-    }
-    
-    p.italic {
-        font-style: italic;
-    }
-    
-    p.bold {
-        font-weight: bold;
-    }
-    
-    p.underline {
-        text-decoration: underline;
-    }
-    
-    p.strikethrough {
-        text-decoration: line-through;
-    }
-    
-    p.cursive {
-        font-family: 'Lobster Two', cursive;
-        font-size: 20nopx;
-    }
-    
-    p.big {
-        font-size: 35px;
-    }
-    
-    @keyframes blink {
-        0% {
-            opacity: .2;
-        }
-        20% {
-            opacity: 1;
-        }
-        100% {
-            opacity: .2;
-        }
-    }
-    
-    .typing span {
-        animation-name: blink;
-        animation-duration: 1.4s;
-        animation-iteration-count: infinite;
-        animation-fill-mode: both;
-    }
-    
-    .typing span:nth-child(2) {
-        animation-delay: .2s;
-    }
-    
-    .typing span:nth-child(3) {
-        animation-delay: .4s;
-    }
-
-    div.modal {
-        display: none;
-        position: fixed;
-        z-index: 1;
-        padding-top: 100px;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0, 0, 0, 0.4);
-        border: none;
-    }
-    
-    div.modal-content {
-        position: relative;
-        background-color: #1a1a1a;
-        margin: auto;
-        padding: 0;
-        width: 80%;
-        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-        -webkit-animation-name: animatetop;
-        -webkit-animation-duration: 0.4s;
-        animation-name: animatetop;
-        animation-duration: 0.4s;
-    }
-    
-    @keyframes animatetop {
-        from {
-            top: -300px;
-            opacity: 0
-        }
-        to {
-            top: 0;
-            opacity: 1
-        }
-    }
-    
-    .close {
-        color: white;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-    }
-    
-    .close:hover,
-    .close:focus {
-        color: #000;
-        text-decoration: none;
-        cursor: pointer;
-    }
-    
-    .modal-header {
-        padding: 2px 16px;
-        background-color: #ff0000;
-        color: white;
-    }
-    
-    .modal-body {
-        padding: 2px 16px;
-        align-items: center;
-        text-align: center;
-    }
-
-    .modal-item {
-        margin: auto;
-        padding: 5px;
-        width: 50%;
-    }
-    
-    p,
-    h2 {
-        color: white;
-        font-family: Arial, Helvetica, sans-serif;
-        line-height: 1.5;
-    }
-
-    input[type=color] {
-        margin: auto;
-        width: 100%;
-        border-radius: 10px;
-    }
-
-    button.np-button {
-        color: white;
-        background-color: #960303;
-        border: none;
-        border-radius: 50px;
-        display: block;
-        margin: auto;
-        width: 100%;
-    }
-    
-    button.np-button:hover {
-        background-color: #d80000;
-    }
-
-    img.avatar-preview {
-        border-radius: 50%;
-        height: 150px;
-        width: 150px;
-    }
-
-    select {
-        background-color: #111111;
-        border: solid 2px grey;
-        border-radius: 50px;
-        display: block;
-        margin: auto;
-        padding: 15px;
-        outline: none;
-        box-sizing: border-box;
-        color: white;
-        width: 100%;
-    }
-    `;
-
-    var Globals = {
-        LastMessageAuthor: "",
-        RoomColour: "",
-        RoomID: "",
-        Gateway: {},
-        ChatReady: false,
-        TypingCount: 0,
-        IsTyping: false,
-        ControlFreezer: {
-            ControlsFrozen: false,
-            ControlFreezeTimer: {}
-        },
-        Menu: {
-            Modal: {},
-            CloseButton: {}
-        }
-    };
-
-    const ConsoleColour = {
-        Green: "\x1b[32m",
-        Red: "\x1b[31m",
-        Yellow: "\x1b[33m",
-        Blue: "\x1b[34m",
-        Reset: "\x1b[0m"
-    };
-
-    const RESOURCE_URL = "netflixparty.voidtech.de"; //Make sure this URL has no protocol. Just the domain.
-
-    Globals.Gateway = new WebSocket("wss://" + RESOURCE_URL + "/gateway");
-
-    //Use this to control the netflix player. Do NOT control the <video> element directly. Only use it for listening
-    function getVideoPlayer() {
-        let netflixAPI = window.netflix.appContext.state.playerApp.getAPI().videoPlayer;
-        let session = netflixAPI.getAllPlayerSessionIds().find((sessionID => sessionID.includes("watch")));
-        return netflixAPI.getVideoPlayerBySessionId(session);
-    };
-
-    function LogMessage(...message) {
-        console.log(ConsoleColour.Red + "[NetflixParty]" + ConsoleColour.Reset, ...message);
-    }
-
-    function controlsFrozen() {
-        return Globals.ControlFreezer.ControlsFrozen;
-    }
-
-    function freezeControls() {
-        LogMessage("Controls frozen");
-        Globals.ControlFreezer.ControlsFrozen = true;
-        Globals.ControlFreezer.ControlFreezeTimer = setTimeout(() => {
-            Globals.ControlFreezer.ControlsFrozen = false;
-            LogMessage("Controls unfrozen");
-        }, 500);
-    }
-
-    function hideModal() {
-        Globals.Menu.Modal.style.display = "none";
-    }
-
-    function showModalMenu() {
-        Globals.Menu.Modal.style.display = "block";
-    }
-
-    function sendGatewayMessage(message) {
-        LogMessage("Sent", message);
-        if (Globals.Gateway.readyState == Globals.Gateway.OPEN) Globals.Gateway.send(JSON.stringify(message));
-    }
-
-    function getDefault(value) {
-        switch (value) {
-            case "username":
-                return "Netflix Party User";
-            case "colour":
-                return "#FF0000";
-            case "avatar":
-                return "default";
-        }
-    }
-
-    function getStoredValue(value) {
-        const storedVal = localStorage.getItem(value);
-        return storedVal == null ? getDefault(value) : storedVal;
-    }
-
-    function showTypingMessage() {
-        document.getElementById("typing-message").style.display = "block";
-    }
-
-    function hideTypingMessage() {
-        document.getElementById("typing-message").style.display = "none";
-    }
-
-    function updateTyping(data) {
-        if (data.user == getStoredValue("username")) return;
-        if (data.mode == "start") Globals.TypingCount = Globals.TypingCount + 1;
-        else Globals.TypingCount = Globals.TypingCount - 1;
-
-        if (Globals.TypingCount > 0) showTypingMessage();
-        else hideTypingMessage();
-    };
-
-    function saveValue(valueName, value) {
-        localStorage.setItem(valueName, value);
-    }
-
-    function pause() {
-        if (controlsFrozen()) return;
-        if (getVideoPlayer().isPaused()) LogMessage("Ignoring pause event");
-        else {
-            LogMessage("Automated pause event fired");
-            freezeControls();
-            getVideoPlayer().pause();
-        }
-    }
-
-    function playAtTime(time) {
-        if (controlsFrozen()) return;
-        if (getVideoPlayer().isPlaying()) LogMessage("Ignoring play event");
-        else {
-            LogMessage("Automated play event fired");
-            freezeControls();
-            getVideoPlayer().seek(time);
-            getVideoPlayer().play();
-        }
-    }
-
-    function convertMillisToTimestamp(millis) {
-        return new Date(millis).toISOString().slice(11, 19)
-    }
-
-    function handlePlayEvent() {
-        const timeStamp = convertMillisToTimestamp(getVideoPlayer().getCurrentTime());
-        LogMessage("Playing at " + timeStamp);
-        displayLocalMessage("Video Playing at " + timeStamp);
-        sendGatewayMessage({ "type": "play-video", "data": { "timestamp": getVideoPlayer().getCurrentTime(), "roomID": Globals.RoomID } });
-    }
-
-    function handlePauseEvent() {
-        LogMessage("Paused");
-        displayLocalMessage("Video Paused");
-        sendGatewayMessage({ "type": "pause-video", "data": { "roomID": Globals.RoomID } });
-    }
-
-    function connectToParty() {
-        sendGatewayMessage({ "type": "join-party", "data": { "roomID": Globals.RoomID, "username": getStoredValue("username") } });
-    }
-
-    function actuallyAddListeners() {
-        let video = document.getElementsByTagName("video")[0];
-        try {
-            video.onpause = function() { handlePauseEvent() };
-        } catch (error) {
-            console.error(error);
-            LogMessage("Could not change pause listener.");
-        }
-
-        try {
-            video.onplay = function() { handlePlayEvent() };
-        } catch (error) {
-            console.error(error);
-            LogMessage("Could not change play listener.");
-        }
-
-        //We observe the video element to see if the SRC value changes. If it does, we know that a new video has been set and we need to
-        //re attach our listeners so we can detect pause/play events.
-        let observer = new MutationObserver((changes) => {
-            changes.forEach(change => {
-                if (change.attributeName.includes('src')) {
-                    LogMessage("Video SRC change detected. Reattaching listeners");
-                    actuallyAddListeners();
-                }
-            });
-        });
-        observer.observe(video, { attributes: true });
-    }
-
-    function addListeners() {
-        LogMessage("Attempting to add listeners...");
-        let player = getVideoPlayer();
-        if (player != undefined && document.getElementsByTagName("video")[0] != undefined) {
-            if (player.isReady()) {
-                LogMessage("Adding listeners!");
-                actuallyAddListeners();
-                connectToParty();
-            } else {
-                LogMessage("Player not ready! Waiting before next listener attempt");
-                setTimeout(addListeners, 1000);
-            }
-        } else {
-            LogMessage("Player undefined! Waiting before next listener attempt");
-            setTimeout(addListeners, 1000);
-        }
-    }
-
-    function initialiseParty() {
-        LogMessage("Source has been injected");
-        window.NetflixParty = Globals;
-        addListeners();
-    }
-
-    function addChatMessage(data) {
-        if (!Globals.ChatReady) return;
-        const author = data.author;
-        const colour = data.colour;
-        const content = data.content;
-        const modifiers = data.modifiers !== "" ? `class="${data.modifiers}"` : "";
-        const avatar = data.avatar;
-
-        let newMessage = `<div class="chat-message">`;
-        if (Globals.LastMessageAuthor !== author) {
-            newMessage += `<img class="user-image" src="${"https://" + RESOURCE_URL + "/avatar/" + avatar}">`;
-            newMessage += `<p class="msg-nickname" style="color:${colour}">${author}</p><br>`;
-        }
-        newMessage += `<p ${modifiers}>${content}</p></div>`;
-        if (Globals.LastMessageAuthor !== author) newMessage += "<br>";
-
-        Globals.LastMessageAuthor = author;
-
-        let chatHistory = document.getElementById("chat-history");
-        chatHistory.insertAdjacentHTML('afterbegin', newMessage);
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
-
-    function displayLocalMessage(message) {
-        addChatMessage({ "author": "System", "colour": Globals.RoomColour, "content": message, "modifiers": "system", "avatar": "default" });
-    }
-
-    function setAvatarUrl(avatar) {
-        document.getElementById("avatar-preview").src = "https://" + RESOURCE_URL + "/avatar/" + avatar;
-    }
-
-    function attachMenuListeners() {
-        Globals.Menu.CloseButton = document.getElementById("close");
-        Globals.Menu.Modal = document.getElementById("modal");
-
-        Globals.Menu.CloseButton.onclick = function() {
+    window.onclick = function(event) {
+        if (event.target == Globals.Menu.Modal) {
             hideModal();
         }
-
-        window.onclick = function(event) {
-            if (event.target == Globals.Menu.Modal) {
-                hideModal();
-            }
-        }
-
-        document.addEventListener("keydown", function(event) {
-            if (event.code == "Escape") {
-                hideModal();
-            }
-        });
-
-        document.getElementById("avatar-input").onchange = function() {
-            setAvatarUrl(document.getElementById("avatar-input").value);
-        }
-
-        document.getElementById("save-button").onclick = function() {
-            let nickname = document.getElementById("nickname-input").value;
-            let colour = document.getElementById("colour-input").value;
-            let avatar = document.getElementById("avatar-input").value;
-            saveValue("username", nickname);
-            saveValue("colour", colour);
-            saveValue("avatar", avatar);
-            displayLocalMessage("Settings updated!");
-        };
-
-        window.addEventListener("keydown", function(event) {
-            if (event.code == "KeyI" && event.ctrlKey && !event.shiftKey) {
-                document.getElementById("nickname-input").value = getStoredValue("username");
-                document.getElementById("colour-input").value = getStoredValue("colour");
-                document.getElementById("avatar-input").value = getStoredValue("avatar");
-                setAvatarUrl(getStoredValue("avatar"));
-                showModalMenu();
-            }
-        });
     }
 
-    function attachChatListeners() {
-        document.getElementById("chat-input").addEventListener("keyup", handleChatEvent);
-        document.getElementById("chat-input").addEventListener("blur", handleChatBlurEvent);
+    document.addEventListener("keydown", function(event) {
+        if (event.code == "Escape") {
+            hideModal();
+        }
+    });
 
-        window.addEventListener("click", event => {
-            if (event.target.id == "chat-input") document.getElementById("chat-input").focus();
-            else document.getElementById("chat-input").blur();
-        });
+    document.getElementById("avatar-input").onchange = function() {
+        setAvatarUrl(document.getElementById("avatar-input").value);
     }
 
-    //This function is a mess, but it works. Never ever ever touch this 
-    function injectPage() {
-        //Add stylesheet
-        let stylesheet = document.createElement("style");
-        stylesheet.innerText = STYLESHEET_RULES;
-        document.head.appendChild(stylesheet);
-        //Add fonts
-        document.head.insertAdjacentHTML("beforeend", `
+    document.getElementById("save-button").onclick = function() {
+        let nickname = document.getElementById("nickname-input").value;
+        let colour = document.getElementById("colour-input").value;
+        let avatar = document.getElementById("avatar-input").value;
+        saveValue("username", nickname);
+        saveValue("colour", colour);
+        saveValue("avatar", avatar);
+        displayLocalMessage("Settings updated!");
+    };
+
+    window.addEventListener("keydown", function(event) {
+        if (event.code == "KeyI" && event.ctrlKey && !event.shiftKey) {
+            document.getElementById("nickname-input").value = getStoredValue("username");
+            document.getElementById("colour-input").value = getStoredValue("colour");
+            document.getElementById("avatar-input").value = getStoredValue("avatar");
+            setAvatarUrl(getStoredValue("avatar"));
+            showModalMenu();
+        }
+    });
+}
+
+function attachChatListeners() {
+    document.getElementById("chat-input").addEventListener("keyup", handleChatEvent);
+    document.getElementById("chat-input").addEventListener("blur", handleChatBlurEvent);
+
+    window.addEventListener("click", event => {
+        if (event.target.id == "chat-input") document.getElementById("chat-input").focus();
+        else document.getElementById("chat-input").blur();
+    });
+}
+
+//This function is a mess, but it works. Never ever ever touch this 
+function injectPage() {
+    //Add fonts
+    document.head.insertAdjacentHTML("beforeend", `
             <link href="https://fonts.googleapis.com/css2?family=Lobster+Two&display=swap" rel="stylesheet">
             <link href="https://fonts.googleapis.com/css2?family=Paytone+One&display=swap" rel="stylesheet">
         `);
-        document.body.insertAdjacentHTML("afterbegin", `
+    document.body.insertAdjacentHTML("afterbegin", `
         <div id="modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -600,88 +244,87 @@ function NetflixPartyEmbeddedSource() {
                 </div>
             </div>
         </div>`);
-        //Re-format the netflix player
-        let videoDiv = document.querySelector("#appMountPoint > div > div > div.watch-video > div");
-        videoDiv.style.display = "inline-block";
-        videoDiv.style.width = "80%"
-        videoDiv.style.float = "left";
-        //Add our chat
-        videoDiv.insertAdjacentHTML("afterend", `<div id="chat"></div>`);
-        let chat = document.getElementById("chat");
-        chat.style.height = "100%"
-        chat.style.width = "20%";
-        chat.style.float = "right";
-        //Add the chat history
-        let chatHistory = document.createElement("div");
-        chatHistory.classList.add("chat");
-        chatHistory.id = "chat-history";
-        chat.appendChild(chatHistory);
-        //Add the chat controls
-        chat.insertAdjacentHTML("beforeend", `
+    //Re-format the netflix player
+    let videoDiv = document.querySelector("#appMountPoint > div > div > div.watch-video > div");
+    videoDiv.style.display = "inline-block";
+    videoDiv.style.width = "80%"
+    videoDiv.style.float = "left";
+    //Add our chat
+    videoDiv.insertAdjacentHTML("afterend", `<div id="chat"></div>`);
+    let chat = document.getElementById("chat");
+    chat.style.height = "100%"
+    chat.style.width = "20%";
+    chat.style.float = "right";
+    //Add the chat history
+    let chatHistory = document.createElement("div");
+    chatHistory.classList.add("chat");
+    chatHistory.id = "chat-history";
+    chat.appendChild(chatHistory);
+    //Add the chat controls
+    chat.insertAdjacentHTML("beforeend", `
             <br><input type="text" id="chat-input" placeholder="Enter a message" autocomplete="off">
             <p class="typing-message typing" id="typing-message"><span>•</span><span>•</span><span>•</span> People are typing</p>
         `);
-        //Make the typing thingy go away
-        hideTypingMessage();
-        Globals.ChatReady = true;
-        //Add some more listeners
-        attachMenuListeners();
-        attachChatListeners();
-        //We are ready for business
-        pause();
-        LogMessage("NetflixParty is ready for business");
-        displayLocalMessage("Press ctrl+i to open the user menu and customise your profile!");
+    //Make the typing thingy go away
+    hideTypingMessage();
+    Globals.ChatReady = true;
+    //Add some more listeners
+    attachMenuListeners();
+    attachChatListeners();
+    //We are ready for business
+    LogMessage("NetflixParty is ready for business");
+    displayLocalMessage("Press ctrl+i to open the user menu and customise your profile!");
+}
+
+function speakMessage(message) {
+    let tts = new SpeechSynthesisUtterance();
+    tts.text = message;
+    window.speechSynthesis.speak(tts);
+}
+
+function handleChatMessage(data) {
+    if (data.modifiers.includes("tts")) speakMessage(data.content);
+    addChatMessage(data);
+}
+
+Globals.Gateway.onopen = function() {
+    LogMessage("Gateway Connected");
+};
+
+Globals.Gateway.onclose = function() {
+    LogMessage("Gateway Disconnected")
+};
+
+Globals.Gateway.onmessage = function(msg) {
+    const message = JSON.parse(msg.data);
+    LogMessage("Received", message);
+    switch (message.type) {
+        case "join-party":
+            if (message.success) {
+                Globals.RoomColour = message.response.theme;
+                injectPage();
+            }
+            break;
+        case "chat-message":
+            handleChatMessage(message.data);
+            break;
+        case "pause-video":
+            pause();
+            break;
+        case "play-video":
+            playAtTime(message.data.time);
+            break;
+        case "system-ping":
+            displayLocalMessage("API response time: " + (new Date().getTime() - message.response.start) + "ms");
+            break;
+        case "typing-update":
+            updateTyping(message.data);
+            break;
     }
+}
 
-    function speakMessage(message) {
-        let tts = new SpeechSynthesisUtterance();
-        tts.text = message;
-        window.speechSynthesis.speak(tts);
-    }
-
-    function handleChatMessage(data) {
-        if (data.modifiers.includes("tts")) speakMessage(data.content);
-        addChatMessage(data);
-    }
-
-    Globals.Gateway.onopen = function() {
-        LogMessage("Gateway Connected");
-    };
-
-    Globals.Gateway.onclose = function() {
-        LogMessage("Gateway Disconnected")
-    };
-
-    Globals.Gateway.onmessage = function(msg) {
-        const message = JSON.parse(msg.data);
-        LogMessage("Received", message);
-        switch (message.type) {
-            case "join-party":
-                if (message.success) {
-                    Globals.RoomColour = message.response.theme;
-                    injectPage();
-                }
-                break;
-            case "chat-message":
-                handleChatMessage(message.data);
-                break;
-            case "pause-video":
-                pause();
-                break;
-            case "play-video":
-                playAtTime(message.data.time);
-                break;
-            case "system-ping":
-                displayLocalMessage("API response time: " + (new Date().getTime() - message.response.start) + "ms");
-                break;
-            case "typing-update":
-                updateTyping(message.data);
-                break;
-        }
-    }
-
-    function handleHelpCommand() {
-        displayLocalMessage(`Chat Command Help:<br>
+function handleHelpCommand() {
+    displayLocalMessage(`Chat Command Help:<br>
 /help - shows this message<br>
 /i [message] - changes your message to italics<br>
 /u [message] - changes your message to underline<br>
@@ -693,148 +336,141 @@ function NetflixPartyEmbeddedSource() {
 /r - reloads your session<br>
 /tts - send a text-to-speech message<br>
 /ping - get the API response time`);
+}
+
+function toCrazyCase(body) {
+    let toUpper = Math.round(Math.random()) == 1 ? true : false;
+    let messageLetters = body.split("");
+    let final = "";
+
+    for (let i = 0; i < messageLetters.length; i++) {
+        if (messageLetters[i].replace(/[A-Za-z]+/g, " ") !== "") {
+            if (toUpper) final += messageLetters[i].toLowerCase();
+            else final += messageLetters[i].toUpperCase();
+            toUpper = !toUpper;
+        } else final += messageLetters[i];
     }
+    return final;
+}
 
-    function toCrazyCase(body) {
-        let toUpper = Math.round(Math.random()) == 1 ? true : false;
-        let messageLetters = body.split("");
-        let final = "";
-
-        for (let i = 0; i < messageLetters.length; i++) {
-            if (messageLetters[i].replace(/[A-Za-z]+/g, " ") !== "") {
-                if (toUpper) final += messageLetters[i].toLowerCase();
-                else final += messageLetters[i].toUpperCase();
-                toUpper = !toUpper;
-            } else final += messageLetters[i];
+function handlePingCommand() {
+    let requestData = {
+        "type": "system-ping",
+        "data": {
+            "start": new Date().getTime()
         }
-        return final;
     }
+    sendGatewayMessage(requestData);
+}
 
-    function handlePingCommand() {
-        let requestData = {
-            "type": "system-ping",
-            "data": {
-                "start": new Date().getTime()
+function sendTypingStop() {
+    if (Globals.IsTyping) {
+        Globals.IsTyping = false;
+        sendGatewayMessage({ "type": "typing-update", "data": { "mode": "stop", "user": getStoredValue("username"), "roomID": Globals.RoomID } });
+    }
+}
+
+function sendTypingStart() {
+    if (!Globals.IsTyping) {
+        Globals.IsTyping = true;
+        sendGatewayMessage({ "type": "typing-update", "data": { "mode": "start", "user": getStoredValue("username"), "roomID": Globals.RoomID } });
+    }
+}
+
+function handleChatBlurEvent(event) {
+    if (event.relatedTarget !== null) event.target.focus();
+}
+
+function handleChatEvent(event) {
+    if (event.key == "Enter") {
+        sendTypingStop();
+        event.preventDefault();
+        let message = document.getElementById("chat-input").value.trim();
+        if (message == "") return;
+        if (message.length > 2000) {
+            displayLocalMessage("Your message is too long! Messages cannot be longer than 2000 characters.");
+            return;
+        }
+
+        let sendChatMessage = true;
+        let modifiers = "";
+
+        if (message.startsWith("/")) {
+            const args = message.slice(1).split(/ +/);
+            const command = args.shift().toLowerCase();
+
+            switch (command) {
+                case "help":
+                    handleHelpCommand();
+                    sendChatMessage = false;
+                    break;
+                case "cc":
+                    message = toCrazyCase(args.join(" "));
+                    break;
+                case "i":
+                    modifiers = "italic";
+                    message = args.join(" ");
+                    break;
+                case "u":
+                    modifiers = "underline";
+                    message = args.join(" ");
+                    break;
+                case "b":
+                    modifiers = "bold";
+                    message = args.join(" ");
+                    break;
+                case "s":
+                    modifiers = "strikethrough";
+                    message = args.join(" ");
+                    break;
+                case "c":
+                    modifiers = "cursive";
+                    message = args.join(" ");
+                    break;
+                case "big":
+                    modifiers = "big";
+                    message = args.join(" ");
+                    break;
+                case "r":
+                    sendChatMessage = false;
+                    location.reload();
+                    break;
+                case "tts":
+                    modifiers = "tts";
+                    message = args.join(" ");
+                    break;
+                case "ping":
+                    handlePingCommand();
+                    sendChatMessage = false;
+                    break;
             }
         }
-        sendGatewayMessage(requestData);
-    }
-
-    function sendTypingStop() {
-        if (Globals.IsTyping) {
-            Globals.IsTyping = false;
-            sendGatewayMessage({ "type": "typing-update", "data": { "mode": "stop", "user": getStoredValue("username"), "roomID": Globals.RoomID } });
-        }
-    }
-
-    function sendTypingStart() {
-        if (!Globals.IsTyping) {
-            Globals.IsTyping = true;
-            sendGatewayMessage({ "type": "typing-update", "data": { "mode": "start", "user": getStoredValue("username"), "roomID": Globals.RoomID } });
-        }
-    }
-
-    function handleChatBlurEvent(event) {
-        if (event.relatedTarget !== null) event.target.focus();
-    }
-
-    function handleChatEvent(event) {
-        if (event.key == "Enter") {
-            sendTypingStop();
-            event.preventDefault();
-            let message = document.getElementById("chat-input").value.trim();
-            if (message == "") return;
-            if (message.length > 2000) {
-                displayLocalMessage("Your message is too long! Messages cannot be longer than 2000 characters.");
-                return;
-            }
-
-            let sendChatMessage = true;
-            let modifiers = "";
-
-            if (message.startsWith("/")) {
-                const args = message.slice(1).split(/ +/);
-                const command = args.shift().toLowerCase();
-
-                switch (command) {
-                    case "help":
-                        handleHelpCommand();
-                        sendChatMessage = false;
-                        break;
-                    case "cc":
-                        message = toCrazyCase(args.join(" "));
-                        break;
-                    case "i":
-                        modifiers = "italic";
-                        message = args.join(" ");
-                        break;
-                    case "u":
-                        modifiers = "underline";
-                        message = args.join(" ");
-                        break;
-                    case "b":
-                        modifiers = "bold";
-                        message = args.join(" ");
-                        break;
-                    case "s":
-                        modifiers = "strikethrough";
-                        message = args.join(" ");
-                        break;
-                    case "c":
-                        modifiers = "cursive";
-                        message = args.join(" ");
-                        break;
-                    case "big":
-                        modifiers = "big";
-                        message = args.join(" ");
-                        break;
-                    case "r":
-                        sendChatMessage = false;
-                        location.reload();
-                        break;
-                    case "tts":
-                        modifiers = "tts";
-                        message = args.join(" ");
-                        break;
-                    case "ping":
-                        handlePingCommand();
-                        sendChatMessage = false;
-                        break;
+        if (sendChatMessage) {
+            sendGatewayMessage({
+                "type": "chat-message",
+                "data": {
+                    "roomID": Globals.RoomID,
+                    "content": message,
+                    "colour": getStoredValue("colour"),
+                    "author": getStoredValue("username"),
+                    "avatar": getStoredValue("avatar"),
+                    "modifiers": modifiers
                 }
-            }
-            if (sendChatMessage) {
-                sendGatewayMessage({
-                    "type": "chat-message",
-                    "data": {
-                        "roomID": Globals.RoomID,
-                        "content": message,
-                        "colour": getStoredValue("colour"),
-                        "author": getStoredValue("username"),
-                        "avatar": getStoredValue("avatar"),
-                        "modifiers": modifiers
-                    }
-                });
-            }
-            document.getElementById("chat-input").value = "";
-        } else {
-            let message = document.getElementById("chat-input").value.trim();
-            if (message == "") sendTypingStop();
-            else sendTypingStart();
+            });
         }
+        document.getElementById("chat-input").value = "";
+    } else {
+        let message = document.getElementById("chat-input").value.trim();
+        if (message == "") sendTypingStop();
+        else sendTypingStart();
     }
+}
 
-    let url = new URL(location.href);
+
+const url = new URL(location.href);
+if (url.searchParams.has("roomID")) {
+    console.log("%cNetflixParty", "color: red; font-weight: bold; font-size: 60px; -webkit-text-stroke-width: 2px; -webkit-text-stroke-color: black;");
+    console.log("NetflixParty is getting ready...");
     Globals.RoomID = url.searchParams.get("roomID");
     initialiseParty();
 }
-
-function embedInPage(fn) {
-    console.log("%cNetflixParty", "color: red; font-weight: bold; font-size: 60px; -webkit-text-stroke-width: 2px; -webkit-text-stroke-color: black;");
-    console.log("NetflixParty is getting ready...");
-    const script = document.createElement("script");
-    script.text = `(${fn})();`;
-    document.documentElement.appendChild(script);
-}
-
-const url = new URL(location.href);
-if (url.searchParams.has("roomID") && url.host == "www.netflix.com") embedInPage(NetflixPartyEmbeddedSource.toString());
